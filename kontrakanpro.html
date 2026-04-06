@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KontrakanPro</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --teal: #0F6E56; --teal-light: #E1F5EE; --teal-mid: #1D9E75;
+    --amber: #BA7517; --amber-light: #FAEEDA;
+    --red: #A32D2D; --red-light: #FCEBEB; --red-mid: #E24B4A;
+    --green-light: #EAF3DE; --green: #3B6D11;
+    --blue-light: #E6F1FB; --blue: #0C447C;
+    --bg: #ffffff; --bg2: #f7f6f3; --bg3: #f1efe8;
+    --text: #1a1a18; --text2: #5f5e5a; --text3: #888780;
+    --border: rgba(0,0,0,0.1); --border2: rgba(0,0,0,0.18);
+    --radius: 8px; --radius-lg: 12px;
+    --font: -apple-system, 'Segoe UI', sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --teal-light: #04342C; --teal-mid: #1D9E75;
+      --amber-light: #412402; --red-light: #501313;
+      --green-light: #173404; --blue-light: #042C53;
+      --bg: #1c1c1a; --bg2: #252523; --bg3: #2c2c2a;
+      --text: #e8e6df; --text2: #9c9a92; --text3: #6b6a64;
+      --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.14);
+    }
+  }
+  body { font-family: var(--font); color: var(--text); background: var(--bg3); min-height: 100vh; }
+  a { color: var(--teal-mid); }
+
+  /* ── LOGIN PAGE ── */
+  #login-page {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; background: var(--bg3);
+  }
+  .login-card {
+    background: var(--bg); border: 0.5px solid var(--border2);
+    border-radius: var(--radius-lg); padding: 40px 36px; width: 100%; max-width: 380px;
+  }
+  .login-logo { display: flex; align-items: center; gap: 8px; margin-bottom: 28px; }
+  .login-logo-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--teal-mid); }
+  .login-logo-text { font-size: 18px; font-weight: 600; }
+  .login-title { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+  .login-sub { font-size: 13px; color: var(--text2); margin-bottom: 28px; }
+  .form-group { margin-bottom: 16px; }
+  .form-label { font-size: 12px; color: var(--text2); margin-bottom: 5px; display: block; font-weight: 500; }
+  .form-input {
+    width: 100%; padding: 9px 12px; font-size: 14px;
+    border: 0.5px solid var(--border2); border-radius: var(--radius);
+    background: var(--bg); color: var(--text); outline: none; transition: border-color 0.15s;
+  }
+  .form-input:focus { border-color: var(--teal-mid); }
+  .btn-login {
+    width: 100%; padding: 10px; font-size: 14px; font-weight: 600;
+    border-radius: var(--radius); border: none; background: var(--teal-mid);
+    color: #fff; cursor: pointer; margin-top: 4px; transition: background 0.15s;
+  }
+  .btn-login:hover { background: var(--teal); }
+  .btn-login:disabled { opacity: 0.6; cursor: not-allowed; }
+  .login-error { font-size: 12px; color: var(--red); margin-top: 10px; display: none; }
+  .login-msg { font-size: 12px; color: var(--teal); margin-top: 10px; display: none; }
+  .config-warn {
+    background: var(--amber-light); border: 0.5px solid var(--amber);
+    border-radius: var(--radius); padding: 12px 14px; margin-bottom: 20px;
+    font-size: 12px; color: var(--amber); line-height: 1.6;
+  }
+  .config-warn code { background: rgba(0,0,0,0.06); padding: 1px 4px; border-radius: 3px; font-family: monospace; }
+
+  /* ── APP SHELL ── */
+  #app { display: none; }
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 20px; height: 52px; background: var(--bg);
+    border-bottom: 0.5px solid var(--border); position: sticky; top: 0; z-index: 50;
+  }
+  .topbar-logo { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .logo-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--teal-mid); }
+  .nav-tabs { display: flex; gap: 2px; }
+  .nav-tab {
+    padding: 6px 14px; border-radius: var(--radius); font-size: 13px;
+    cursor: pointer; border: none; transition: all 0.15s;
+    color: var(--text2); background: transparent;
+  }
+  .nav-tab.active { background: var(--bg2); color: var(--text); font-weight: 500; }
+  .nav-tab:hover:not(.active) { background: var(--bg2); }
+  .topbar-right { display: flex; align-items: center; gap: 8px; }
+  .notif-btn {
+    position: relative; cursor: pointer; padding: 6px 8px;
+    border-radius: var(--radius); border: none; background: transparent; color: var(--text2);
+  }
+  .notif-btn:hover { background: var(--bg2); }
+  .notif-dot { position: absolute; top: 4px; right: 4px; width: 7px; height: 7px; border-radius: 50%; background: var(--red-mid); display: none; }
+  .notif-dot.show { display: block; }
+  .user-chip {
+    font-size: 12px; color: var(--text2); padding: 5px 10px;
+    border-radius: var(--radius); border: 0.5px solid var(--border2); cursor: pointer;
+    background: transparent; transition: all 0.15s;
+  }
+  .user-chip:hover { background: var(--bg2); }
+
+  /* ── PAGES ── */
+  .page { display: none; padding: 20px; max-width: 1200px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  /* ── LOADING ── */
+  .loading-spinner {
+    display: flex; align-items: center; justify-content: center;
+    gap: 10px; padding: 40px; color: var(--text2); font-size: 13px;
+  }
+  .spinner {
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 2px solid var(--border2); border-top-color: var(--teal-mid);
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── METRICS ── */
+  .metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; margin-bottom: 20px; }
+  .metric-card { background: var(--bg2); border-radius: var(--radius); padding: 14px 16px; }
+  .metric-label { font-size: 11px; color: var(--text2); margin-bottom: 6px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.4px; }
+  .metric-value { font-size: 24px; font-weight: 600; line-height: 1; }
+  .metric-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
+  .badge { display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 20px; margin-top: 5px; font-weight: 500; }
+  .badge-success { background: var(--green-light); color: var(--green); }
+  .badge-warn { background: var(--amber-light); color: var(--amber); }
+  .badge-danger { background: var(--red-light); color: var(--red); }
+  .badge-info { background: var(--blue-light); color: var(--blue); }
+  .badge-gray { background: var(--bg3); color: var(--text2); }
+
+  /* ── CARD BOX ── */
+  .card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 18px; }
+  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .card-title { font-size: 14px; font-weight: 600; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  @media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } .metric-grid { grid-template-columns: 1fr 1fr; } }
+
+  /* ── FORECAST BARS ── */
+  .forecast-bars { display: flex; align-items: flex-end; gap: 8px; height: 130px; margin-top: 12px; }
+  .fbar-wrap { display: flex; flex-direction: column; align-items: center; flex: 1; height: 100%; justify-content: flex-end; }
+  .fbar { width: 100%; border-radius: 3px 3px 0 0; min-height: 4px; }
+  .fbar-lbl { font-size: 10px; color: var(--text3); margin-top: 4px; }
+  .fbar-val { font-size: 10px; font-weight: 500; color: var(--text2); margin-bottom: 3px; }
+
+  /* ── ALERT LIST ── */
+  .alert-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 0.5px solid var(--border); }
+  .alert-item:last-child { border-bottom: none; }
+  .av { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; }
+  .alert-info { flex: 1; min-width: 0; }
+  .alert-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .alert-detail { font-size: 11px; color: var(--text2); }
+
+  /* ── CONTROLS ROW ── */
+  .controls-row { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+  .search-box {
+    flex: 1; min-width: 160px; padding: 7px 12px; font-size: 13px;
+    border: 0.5px solid var(--border2); border-radius: var(--radius);
+    background: var(--bg); color: var(--text); outline: none;
+  }
+  .search-box:focus { border-color: var(--teal-mid); }
+  .fbtn {
+    padding: 7px 12px; font-size: 12px; border-radius: var(--radius);
+    border: 0.5px solid var(--border2); cursor: pointer;
+    background: var(--bg); color: var(--text2); transition: all 0.15s; white-space: nowrap; font-family: var(--font);
+  }
+  .fbtn.on { background: var(--teal-light); color: var(--teal); border-color: var(--teal-mid); }
+  .fbtn:hover:not(.on) { background: var(--bg2); }
+  .add-btn {
+    padding: 7px 14px; font-size: 12px; border-radius: var(--radius);
+    border: none; cursor: pointer; background: var(--teal-mid);
+    color: #fff; font-weight: 600; transition: background 0.15s; font-family: var(--font);
+  }
+  .add-btn:hover { background: var(--teal); }
+
+  /* ── TENANT GRID ── */
+  .tenant-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 12px; }
+  .tcard {
+    background: var(--bg); border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg); padding: 14px; cursor: pointer; transition: border-color 0.15s;
+  }
+  .tcard:hover { border-color: var(--border2); }
+  .tcard.urgent { border-left: 3px solid var(--red-mid); border-radius: 0 var(--radius-lg) var(--radius-lg) 0; }
+  .tcard.warning { border-left: 3px solid #EF9F27; border-radius: 0 var(--radius-lg) var(--radius-lg) 0; }
+  .tcard-top { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; }
+  .tcard-avatar { width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; flex-shrink: 0; overflow: hidden; }
+  .tcard-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .tcard-name { font-size: 14px; font-weight: 600; }
+  .tcard-room { font-size: 11px; color: var(--text3); }
+  .tcard-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; margin-bottom: 10px; }
+  .tcard-meta-item { font-size: 11px; color: var(--text2); }
+  .tcard-meta-label { font-size: 10px; color: var(--text3); }
+  .dbar-bg { height: 4px; background: var(--bg2); border-radius: 2px; overflow: hidden; }
+  .dbar-fill { height: 100%; border-radius: 2px; }
+
+  /* ── RUMAH GRID ── */
+  .rumah-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px,1fr)); gap: 10px; }
+  .rcard {
+    border: 0.5px solid var(--border); border-radius: var(--radius);
+    padding: 14px 12px; text-align: center; cursor: pointer; transition: all 0.15s;
+  }
+  .rcard:hover { border-color: var(--border2); }
+  .rcard.occupied { background: var(--teal-light); }
+  .rcard.empty { background: var(--bg2); }
+  .rcard.urgent { background: var(--red-light); }
+  .rcard.warning { background: var(--amber-light); }
+  .rcard-num { font-size: 15px; font-weight: 600; margin-bottom: 3px; }
+
+  /* ── FINANCE TABLE ── */
+  .ftable { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .ftable th { font-size: 11px; color: var(--text2); font-weight: 500; text-align: left; padding: 6px 12px; border-bottom: 0.5px solid var(--border); }
+  .ftable td { padding: 10px 12px; border-bottom: 0.5px solid var(--border); }
+  .ftable tr:last-child td { border-bottom: none; }
+  .ftable tr:hover td { background: var(--bg2); }
+
+  /* ── NOTIF LIST ── */
+  .notif-item { display: flex; gap: 10px; padding: 12px 0; border-bottom: 0.5px solid var(--border); align-items: flex-start; }
+  .notif-item:last-child { border-bottom: none; }
+  .notif-icon { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px; }
+  .notif-text { font-size: 13px; line-height: 1.5; }
+  .notif-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+  /* ── MODAL ── */
+  .modal-backdrop {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+    z-index: 200; align-items: flex-start; justify-content: center; padding: 20px; overflow-y: auto;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--bg); border-radius: var(--radius-lg);
+    border: 0.5px solid var(--border); width: 100%; max-width: 500px;
+    margin-top: 40px; margin-bottom: 40px; flex-shrink: 0;
+  }
+  .modal-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 20px; border-bottom: 0.5px solid var(--border);
+    position: sticky; top: 0; background: var(--bg); border-radius: var(--radius-lg) var(--radius-lg) 0 0; z-index: 1;
+  }
+  .modal-title { font-size: 15px; font-weight: 600; }
+  .modal-close { cursor: pointer; font-size: 20px; color: var(--text2); border: none; background: none; line-height: 1; padding: 2px 6px; border-radius: 4px; }
+  .modal-close:hover { background: var(--bg2); }
+  .modal-body { padding: 20px; }
+  .modal-foot { padding: 14px 20px; border-top: 0.5px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .btn-cancel { padding: 8px 16px; font-size: 13px; border-radius: var(--radius); border: 0.5px solid var(--border2); background: transparent; color: var(--text2); cursor: pointer; font-family: var(--font); }
+  .btn-save { padding: 8px 16px; font-size: 13px; border-radius: var(--radius); border: none; background: var(--teal-mid); color: #fff; font-weight: 600; cursor: pointer; font-family: var(--font); }
+  .btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
+  .btn-danger { padding: 8px 16px; font-size: 13px; border-radius: var(--radius); border: none; background: var(--red-mid); color: #fff; font-weight: 600; cursor: pointer; font-family: var(--font); margin-right: auto; }
+  .photo-circle {
+    width: 68px; height: 68px; border-radius: 50%; background: var(--bg2);
+    border: 0.5px solid var(--border2); display: flex; align-items: center;
+    justify-content: center; cursor: pointer; overflow: hidden; font-size: 11px;
+    color: var(--text3); text-align: center; flex-shrink: 0;
+  }
+  .photo-circle img { width: 100%; height: 100%; object-fit: cover; }
+  .form-hint { font-size: 11px; color: var(--text3); margin-top: 4px; }
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--text3); font-size: 13px; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 20px; right: 20px; z-index: 999;
+    background: var(--text); color: var(--bg); padding: 10px 16px;
+    border-radius: var(--radius); font-size: 13px; font-weight: 500;
+    transform: translateY(60px); opacity: 0; transition: all 0.25s;
+    max-width: 300px;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.error { background: var(--red-mid); color: #fff; }
+
+  /* ── WA BUTTON ── */
+  .wa-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; padding: 4px 9px; border-radius: 20px;
+    background: #25D366; color: #fff; text-decoration: none; font-weight: 500;
+  }
+  .delete-confirm {
+    background: var(--red-light); border: 0.5px solid var(--red-mid);
+    border-radius: var(--radius); padding: 10px 14px; font-size: 12px;
+    color: var(--red); margin-bottom: 14px; display: none;
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════ LOGIN PAGE ══════════════ -->
+<div id="login-page">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-dot"></div>
+      <span class="login-logo-text">KontrakanPro</span>
+    </div>
+
+    <div class="config-warn" id="config-warn" style="display:none">
+      ⚠️ Belum dikonfigurasi. Edit file ini, cari bagian
+      <code>SUPABASE_URL</code> dan <code>SUPABASE_ANON_KEY</code>
+      di bagian atas script, lalu isi dengan kredensial Supabase kamu.
+    </div>
+
+    <div class="login-title">Masuk ke akun kamu</div>
+    <div class="login-sub">Hanya pemilik yang bisa mengakses sistem ini</div>
+
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input class="form-input" type="email" id="login-email" placeholder="kamu@email.com" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input class="form-input" type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn-login" id="login-btn" onclick="doLogin()">Masuk</button>
+    <div class="login-error" id="login-error"></div>
+    <div class="login-msg" id="login-msg"></div>
+
+    <div style="text-align:center; margin-top:18px; font-size:12px; color:var(--text3);">
+      Lupa password? <a href="#" onclick="doResetPw()">Reset via email</a>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ APP ══════════════ -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-logo">
+      <span class="logo-dot"></span>
+      KontrakanPro
+    </div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="showPage('dashboard')">Dashboard</button>
+      <button class="nav-tab" onclick="showPage('pengontrak')">Pengontrak</button>
+      <button class="nav-tab" onclick="showPage('rumah')">Rumah</button>
+      <button class="nav-tab" onclick="showPage('keuangan')">Keuangan</button>
+      <button class="nav-tab" onclick="showPage('notifikasi')">Notifikasi</button>
+    </div>
+    <div class="topbar-right">
+      <button class="notif-btn" onclick="showPage('notifikasi')" title="Notifikasi">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="notif-dot" id="notif-dot"></span>
+      </button>
+      <button class="user-chip" id="user-chip" onclick="doLogout()">Keluar</button>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="page active" id="page-dashboard">
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="metric-label">Total Rumah</div>
+        <div class="metric-value" id="m-total">—</div>
+        <div class="metric-sub">unit kontrakan</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Terisi</div>
+        <div class="metric-value" id="m-occ" style="color:var(--teal-mid)">—</div>
+        <div class="metric-sub" id="m-pct">pengontrak aktif</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Pendapatan Bulan Ini</div>
+        <div class="metric-value" id="m-income" style="color:var(--teal-mid)">—</div>
+        <div class="metric-sub">dari kontrak aktif</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Segera Habis</div>
+        <div class="metric-value" id="m-exp" style="color:var(--red)">—</div>
+        <div class="metric-sub">dalam 30 hari</div>
+      </div>
+    </div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Forecast pendapatan (6 bulan)</div></div>
+        <div class="forecast-bars" id="forecast-bars">
+          <div class="loading-spinner"><div class="spinner"></div> Memuat...</div>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:8px;">Bar abu = proyeksi setelah kontrak habis</div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Kontrak segera habis</div>
+          <span class="badge badge-danger" id="exp-count"></span>
+        </div>
+        <div id="expiring-list"><div class="loading-spinner"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Status semua rumah</div></div>
+      <div id="rumah-mini-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(95px,1fr));gap:8px;margin-top:4px;"></div>
+    </div>
+  </div>
+
+  <!-- PENGONTRAK -->
+  <div class="page" id="page-pengontrak">
+    <div class="controls-row">
+      <input class="search-box" type="text" id="search-q" placeholder="Cari nama atau rumah..." oninput="renderTenants()">
+      <button class="fbtn on" id="f-all" onclick="setFilter('all')">Semua</button>
+      <button class="fbtn" id="f-urgent" onclick="setFilter('urgent')">Kritis &lt;7hr</button>
+      <button class="fbtn" id="f-warning" onclick="setFilter('warning')">Hampir &lt;30hr</button>
+      <button class="fbtn" id="f-sort" onclick="toggleSort()">A–Z</button>
+      <button class="add-btn" onclick="openTenantModal()">+ Tambah</button>
+    </div>
+    <div class="tenant-grid" id="tenant-grid">
+      <div class="loading-spinner"><div class="spinner"></div> Memuat...</div>
+    </div>
+  </div>
+
+  <!-- RUMAH -->
+  <div class="page" id="page-rumah">
+    <div class="controls-row">
+      <div style="font-size:13px;color:var(--text2);display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--teal-mid);margin-right:5px;vertical-align:middle;"></span>Terisi</span>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#EF9F27;margin-right:5px;vertical-align:middle;"></span>Hampir habis</span>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--red-mid);margin-right:5px;vertical-align:middle;"></span>Kritis</span>
+        <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--bg3);border:0.5px solid var(--border2);margin-right:5px;vertical-align:middle;"></span>Kosong</span>
+      </div>
+      <button class="add-btn" onclick="openRumahModal()">+ Tambah Rumah</button>
+    </div>
+    <div class="rumah-grid" id="rumah-grid">
+      <div class="loading-spinner"><div class="spinner"></div> Memuat...</div>
+    </div>
+  </div>
+
+  <!-- KEUANGAN -->
+  <div class="page" id="page-keuangan">
+    <div class="metric-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:20px;">
+      <div class="metric-card">
+        <div class="metric-label">Total Proyeksi</div>
+        <div class="metric-value" id="fin-total" style="color:var(--teal-mid)">—</div>
+        <div class="metric-sub">dari semua kontrak aktif</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Rata-rata / Rumah</div>
+        <div class="metric-value" id="fin-avg">—</div>
+        <div class="metric-sub">per bulan</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Potensi Hilang</div>
+        <div class="metric-value" id="fin-risk" style="color:var(--red)">—</div>
+        <div class="metric-sub">jika kontrak kritis tak diperbarui</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Rincian per pengontrak</div></div>
+      <div style="overflow-x:auto;">
+        <table class="ftable">
+          <thead><tr><th>Nama</th><th>Rumah</th><th>Tarif/bln</th><th>Sisa bulan</th><th>Proyeksi sisa</th><th>Status</th></tr></thead>
+          <tbody id="fin-tbody"><tr><td colspan="6"><div class="loading-spinner"><div class="spinner"></div></div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOTIFIKASI -->
+  <div class="page" id="page-notifikasi">
+    <div class="card" style="max-width:540px;">
+      <div class="card-header" style="border-bottom:0.5px solid var(--border);padding-bottom:14px;margin-bottom:0;">
+        <div class="card-title">Notifikasi</div>
+        <button class="fbtn" onclick="markRead()" style="font-size:11px;padding:4px 10px;">Tandai dibaca</button>
+      </div>
+      <div id="notif-list" style="padding-top:4px;">
+        <div class="loading-spinner"><div class="spinner"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PENGONTRAK -->
+<div class="modal-backdrop" id="modal-tenant" onclick="closeModalIf(event,'modal-tenant')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <div class="modal-title" id="modal-tenant-title">Tambah Pengontrak</div>
+      <button class="modal-close" onclick="closeModal('modal-tenant')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:18px;">
+        <div class="photo-circle" id="photo-preview" onclick="document.getElementById('photo-file').click()">
+          <span style="font-size:11px;color:var(--text3);">Foto</span>
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--text2);">Foto profil (opsional)</div>
+          <div class="form-hint">Klik lingkaran untuk unggah</div>
+        </div>
+        <input type="file" id="photo-file" accept="image/*" style="display:none" onchange="previewPhoto(this)">
+      </div>
+      <div class="delete-confirm" id="delete-confirm">
+        Yakin hapus pengontrak ini? Data tidak bisa dikembalikan.
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nama lengkap *</label>
+          <input class="form-input" id="f-name" type="text" placeholder="Budi Santoso">
+        </div>
+        <div class="form-group">
+          <label class="form-label">No WhatsApp *</label>
+          <input class="form-input" id="f-wa" type="text" placeholder="08123456789">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">No / nama rumah *</label>
+          <input class="form-input" id="f-room" type="text" placeholder="Rumah 1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tarif per bulan (Rp)</label>
+          <input class="form-input" id="f-rate" type="number" placeholder="1500000" min="0">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Tanggal masuk *</label>
+          <input class="form-input" id="f-start" type="date">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Lama kontrak (bulan) *</label>
+          <input class="form-input" id="f-dur" type="number" placeholder="6" min="1">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Catatan</label>
+        <input class="form-input" id="f-note" type="text" placeholder="Keterangan tambahan...">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-danger" id="btn-delete" onclick="deleteTenant()" style="display:none">Hapus</button>
+      <button class="btn-cancel" onclick="closeModal('modal-tenant')">Batal</button>
+      <button class="btn-save" id="btn-save-tenant" onclick="saveTenant()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RUMAH -->
+<div class="modal-backdrop" id="modal-rumah" onclick="closeModalIf(event,'modal-rumah')">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:400px;">
+    <div class="modal-head">
+      <div class="modal-title" id="modal-rumah-title">Tambah Rumah</div>
+      <button class="modal-close" onclick="closeModal('modal-rumah')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Nama / nomor rumah *</label>
+        <input class="form-input" id="r-name" type="text" placeholder="Rumah 1, Blok A No.3, dll">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Alamat</label>
+        <input class="form-input" id="r-addr" type="text" placeholder="Jl. Contoh No. 1">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Keterangan</label>
+        <input class="form-input" id="r-note" type="text" placeholder="2 kamar, AC, parkir, dll">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-danger" id="btn-del-rumah" onclick="deleteRumah()" style="display:none">Hapus</button>
+      <button class="btn-cancel" onclick="closeModal('modal-rumah')">Batal</button>
+      <button class="btn-save" id="btn-save-rumah" onclick="saveRumah()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════
+//   ⚙️  KONFIGURASI — ISI BAGIAN INI
+// ══════════════════════════════════════════
+const SUPABASE_URL  = 'https://qlzhgbirrquzafecoefs.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsemhnYmlycnF1emFmZWNvZWZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMzk2NDksImV4cCI6MjA5MDkxNTY0OX0.0sLS8d3s4ylru7lATXrkqjjG7MkH_iCdjNWJoFyZ8mc';
+// ══════════════════════════════════════════
+
+const isConfigured = !SUPABASE_URL.includes('GANTI');
+let sb, tenants = [], rumahList = [], currentTenantId = null, currentRumahId = null;
+let filterMode = 'all', sortAZ = false, photoData = '';
+
+// ── INIT ──────────────────────────────────
+if (!isConfigured) {
+  document.getElementById('config-warn').style.display = 'block';
+  document.getElementById('login-btn').disabled = true;
+} else {
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+  sb.auth.onAuthStateChange((event, session) => {
+    if (session) {
+      document.getElementById('login-page').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      document.getElementById('user-chip').textContent = session.user.email.split('@')[0] + ' · Keluar';
+      loadAll();
+    } else {
+      document.getElementById('login-page').style.display = 'flex';
+      document.getElementById('app').style.display = 'none';
+    }
+  });
+}
+
+// ── AUTH ──────────────────────────────────
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-pass').value;
+  const btn   = document.getElementById('login-btn');
+  const err   = document.getElementById('login-error');
+  const msg   = document.getElementById('login-msg');
+  err.style.display = 'none'; msg.style.display = 'none';
+  if (!email || !pass) { showErr(err, 'Isi email dan password.'); return; }
+  btn.disabled = true; btn.textContent = 'Masuk...';
+  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+  btn.disabled = false; btn.textContent = 'Masuk';
+  if (error) showErr(err, 'Email atau password salah.');
+}
+
+async function doResetPw() {
+  const email = document.getElementById('login-email').value.trim();
+  const err = document.getElementById('login-error');
+  const msg = document.getElementById('login-msg');
+  if (!email) { showErr(err, 'Isi email kamu dulu.'); return; }
+  err.style.display = 'none';
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.href });
+  if (error) showErr(err, 'Gagal kirim email reset.');
+  else { msg.textContent = 'Link reset sudah dikirim ke email kamu.'; msg.style.display = 'block'; }
+}
+
+async function doLogout() {
+  if (!confirm('Keluar dari KontrakanPro?')) return;
+  await sb.auth.signOut();
+}
+
+function showErr(el, msg) { el.textContent = msg; el.style.display = 'block'; }
+document.getElementById('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+// ── LOAD DATA ─────────────────────────────
+async function loadAll() {
+  await Promise.all([loadRumah(), loadTenants()]);
+  renderDashboard();
+  renderTenants();
+  renderRumah();
+  renderFinance();
+  renderNotif();
+}
+
+async function loadTenants() {
+  if (!sb) return;
+  const { data, error } = await sb.from('pengontrak').select('*').order('nama');
+  if (!error && data) tenants = data;
+}
+
+async function loadRumah() {
+  if (!sb) return;
+  const { data, error } = await sb.from('rumah').select('*').order('nama');
+  if (!error && data) rumahList = data;
+}
+
+// ── HELPERS ───────────────────────────────
+const COLORS = ['#1D9E75','#378ADD','#BA7517','#9F3FBF','#D4537E','#D85A30','#639922'];
+function getColor(i) { return COLORS[i % COLORS.length]; }
+function initials(name) { return (name||'?').split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase(); }
+function fmtRp(n) {
+  n = Math.round(n);
+  if (n >= 1e9) return 'Rp ' + (n/1e9).toFixed(1) + 'M';
+  if (n >= 1e6) return 'Rp ' + (n/1e6).toFixed(1) + 'jt';
+  return 'Rp ' + Math.round(n/1e3) + 'rb';
+}
+function addMonths(d, n) { const r = new Date(d); r.setMonth(r.getMonth()+n); return r; }
+function daysDiff(a,b) { return Math.round((b-a)/(864e5)); }
+function daysLeft(t) { return daysDiff(new Date(), addMonths(new Date(t.tanggal_masuk), t.durasi_bulan)); }
+function pct(t) {
+  const s = new Date(t.tanggal_masuk), e = addMonths(s, t.durasi_bulan);
+  const tot = daysDiff(s,e), el = daysDiff(s,new Date());
+  return Math.min(100, Math.max(0, Math.round(el/tot*100)));
+}
+function urgency(t) { const d=daysLeft(t); return d<=7?'urgent':d<=30?'warning':'ok'; }
+
+// ── DASHBOARD ─────────────────────────────
+function renderDashboard() {
+  const total = rumahList.length;
+  const occ   = tenants.length;
+  const monthly = tenants.reduce((a,t)=>a+Number(t.tarif||0),0);
+  const expiring = tenants.filter(t=>daysLeft(t)<=30).length;
+
+  document.getElementById('m-total').textContent = total;
+  document.getElementById('m-occ').textContent   = occ;
+  document.getElementById('m-pct').textContent   = total ? Math.round(occ/total*100)+'% hunian' : '0% hunian';
+  document.getElementById('m-income').textContent = fmtRp(monthly);
+  document.getElementById('m-exp').textContent   = expiring;
+  document.getElementById('exp-count').textContent = expiring + ' kontrak';
+
+  // Forecast bars
+  const now = new Date();
+  const months = Array.from({length:6},(_,i)=>{
+    const m = new Date(now); m.setMonth(m.getMonth()+i);
+    const lbl = m.toLocaleString('id-ID',{month:'short'});
+    const rev = tenants.reduce((acc,t)=>{
+      const end = addMonths(new Date(t.tanggal_masuk), t.durasi_bulan);
+      return m < end ? acc+Number(t.tarif||0) : acc;
+    },0);
+    return {lbl, rev, future: i>0};
+  });
+  const maxRev = Math.max(...months.map(m=>m.rev),1);
+  document.getElementById('forecast-bars').innerHTML = months.map(m=>{
+    const h = Math.max(4, Math.round((m.rev/maxRev)*110));
+    const col = m.future ? '#B4B2A9' : 'var(--teal-mid)';
+    return `<div class="fbar-wrap">
+      <div class="fbar-val">${fmtRp(m.rev)}</div>
+      <div class="fbar" style="height:${h}px;background:${col};"></div>
+      <div class="fbar-lbl">${m.lbl}</div>
+    </div>`;
+  }).join('');
+
+  // Expiring list
+  const expList = tenants.filter(t=>daysLeft(t)<=30).sort((a,b)=>daysLeft(a)-daysLeft(b));
+  document.getElementById('expiring-list').innerHTML = expList.length
+    ? expList.map((t,i)=>{
+        const d=daysLeft(t), ug=urgency(t), col=getColor(i);
+        return `<div class="alert-item">
+          <div class="av" style="background:${col}22;color:${col};">${initials(t.nama)}</div>
+          <div class="alert-info">
+            <div class="alert-name">${t.nama}</div>
+            <div class="alert-detail">${t.rumah} · ${t.wa}</div>
+          </div>
+          <span class="badge ${ug==='urgent'?'badge-danger':'badge-warn'}">${d<=0?'Habis!':d+' hari'}</span>
+        </div>`;
+      }).join('')
+    : '<div class="empty-state">Tidak ada kontrak yang segera habis ✓</div>';
+
+  // Mini room grid
+  document.getElementById('rumah-mini-grid').innerHTML = rumahList.map(r=>{
+    const t = tenants.find(x=>x.rumah===r.nama);
+    if (!t) return `<div style="background:var(--bg2);border-radius:var(--radius);padding:10px;text-align:center;border:0.5px solid var(--border);font-size:13px;font-weight:500;">${r.nama}<div style="font-size:10px;color:var(--text3);margin-top:2px;">Kosong</div></div>`;
+    const ug=urgency(t),d=daysLeft(t);
+    const bg=ug==='urgent'?'var(--red-light)':ug==='warning'?'var(--amber-light)':'var(--teal-light)';
+    const cl=ug==='urgent'?'var(--red)':ug==='warning'?'var(--amber)':'var(--teal)';
+    return `<div style="background:${bg};border-radius:var(--radius);padding:10px;text-align:center;border:0.5px solid var(--border);">
+      <div style="font-size:13px;font-weight:600;">${r.nama}</div>
+      <div style="font-size:10px;color:${cl};font-weight:500;margin-top:2px;">${d<=0?'Habis!':d+'hr'}</div>
+    </div>`;
+  }).join('');
+
+  // Notif dot
+  const hasUrgent = tenants.some(t=>urgency(t)!=='ok');
+  document.getElementById('notif-dot').classList.toggle('show', hasUrgent);
+}
+
+// ── PENGONTRAK ────────────────────────────
+function renderTenants() {
+  const q = (document.getElementById('search-q')?.value||'').toLowerCase();
+  let list = tenants.filter(t =>
+    t.nama.toLowerCase().includes(q) || (t.rumah||'').toLowerCase().includes(q)
+  );
+  if (filterMode==='urgent') list = list.filter(t=>urgency(t)==='urgent');
+  if (filterMode==='warning') list = list.filter(t=>['urgent','warning'].includes(urgency(t)));
+  if (sortAZ) list.sort((a,b)=>a.nama.localeCompare(b.nama,'id'));
+
+  const grid = document.getElementById('tenant-grid');
+  if (!list.length) {
+    grid.innerHTML = '<div class="empty-state">Tidak ada pengontrak ditemukan</div>';
+    return;
+  }
+  grid.innerHTML = list.map((t,i)=>{
+    const d=daysLeft(t), p=pct(t), ug=urgency(t), col=getColor(tenants.indexOf(t));
+    const barC = ug==='urgent'?'var(--red-mid)':ug==='warning'?'#EF9F27':'var(--teal-mid)';
+    const end = addMonths(new Date(t.tanggal_masuk), t.durasi_bulan).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
+    const dStr = d<=0
+      ? `<span style="color:var(--red);font-weight:600;">Habis!</span>`
+      : ug==='urgent'
+        ? `<span style="color:var(--red);font-weight:600;">${d} hari</span>`
+        : ug==='warning'
+          ? `<span style="color:var(--amber);font-weight:600;">${d} hari</span>`
+          : `${d} hari`;
+    const avatar = t.foto_url
+      ? `<div class="tcard-avatar"><img src="${t.foto_url}" alt="${t.nama}"></div>`
+      : `<div class="tcard-avatar" style="background:${col}22;color:${col};">${initials(t.nama)}</div>`;
+    return `<div class="tcard ${ug!=='ok'?ug:''}" onclick="openTenantModal(${t.id})">
+      <div class="tcard-top">
+        ${avatar}
+        <div style="flex:1;min-width:0;">
+          <div class="tcard-name">${t.nama}</div>
+          <div class="tcard-room">${t.rumah||'—'}</div>
+        </div>
+        ${ug==='urgent'?'<span class="badge badge-danger">Kritis</span>':ug==='warning'?'<span class="badge badge-warn">Segera</span>':''}
+      </div>
+      <div class="tcard-meta">
+        <div class="tcard-meta-item"><div class="tcard-meta-label">WhatsApp</div>${t.wa||'—'}</div>
+        <div class="tcard-meta-item"><div class="tcard-meta-label">Tarif</div>${fmtRp(t.tarif||0)}/bln</div>
+        <div class="tcard-meta-item"><div class="tcard-meta-label">Masuk</div>${new Date(t.tanggal_masuk).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'})}</div>
+        <div class="tcard-meta-item"><div class="tcard-meta-label">Durasi</div>${t.durasi_bulan} bulan</div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:4px;">
+          <span>Sisa: ${dStr}</span><span>Habis: ${end}</span>
+        </div>
+        <div class="dbar-bg"><div class="dbar-fill" style="width:${p}%;background:${barC};"></div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function setFilter(mode) {
+  filterMode = mode;
+  ['all','urgent','warning'].forEach(f=>{
+    const btn = document.getElementById('f-'+f);
+    if (!btn) return;
+    btn.classList.toggle('on', f===mode);
+  });
+  renderTenants();
+}
+
+function toggleSort() {
+  sortAZ = !sortAZ;
+  const btn = document.getElementById('f-sort');
+  btn.textContent = sortAZ ? 'Default' : 'A–Z';
+  btn.classList.toggle('on', sortAZ);
+  renderTenants();
+}
+
+// ── RUMAH ─────────────────────────────────
+function renderRumah() {
+  const grid = document.getElementById('rumah-grid');
+  if (!rumahList.length) {
+    grid.innerHTML = '<div class="empty-state">Belum ada rumah. Klik "+ Tambah Rumah".</div>';
+    return;
+  }
+  grid.innerHTML = rumahList.map(r=>{
+    const t = tenants.find(x=>x.rumah===r.nama);
+    if (!t) return `<div class="rcard empty" onclick="openRumahModal(${r.id})">
+      <div class="rcard-num">${r.nama}</div>
+      <div style="font-size:10px;color:var(--text3);">Kosong</div>
+    </div>`;
+    const ug=urgency(t),d=daysLeft(t);
+    const cls=ug==='urgent'?'urgent':ug==='warning'?'warning':'occupied';
+    const cl=ug==='urgent'?'var(--red)':ug==='warning'?'var(--amber)':'var(--teal)';
+    return `<div class="rcard ${cls}" onclick="openRumahModal(${r.id})">
+      <div class="rcard-num">${r.nama}</div>
+      <div style="font-size:11px;font-weight:600;color:${cl};">${t.nama.split(' ')[0]}</div>
+      <div style="font-size:10px;color:${cl};">${d<=0?'Habis!':d+' hari'}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── KEUANGAN ──────────────────────────────
+function renderFinance() {
+  const proj = tenants.reduce((a,t)=>a+(Number(t.tarif||0)*Math.max(0,daysLeft(t)/30)),0);
+  const avg  = tenants.length ? tenants.reduce((a,t)=>a+Number(t.tarif||0),0)/tenants.length : 0;
+  const risk = tenants.filter(t=>daysLeft(t)<=30).reduce((a,t)=>a+Number(t.tarif||0),0);
+  document.getElementById('fin-total').textContent = fmtRp(proj);
+  document.getElementById('fin-avg').textContent   = fmtRp(avg);
+  document.getElementById('fin-risk').textContent  = fmtRp(risk);
+
+  const rows = [...tenants].sort((a,b)=>daysLeft(a)-daysLeft(b));
+  document.getElementById('fin-tbody').innerHTML = rows.map(t=>{
+    const d=Math.max(0,daysLeft(t)), months=Math.max(0,Math.round(d/30)), prj=Number(t.tarif||0)*months;
+    const ug=urgency(t);
+    const chip = ug==='urgent'?'<span class="badge badge-danger">Kritis</span>'
+                :ug==='warning'?'<span class="badge badge-warn">Hampir</span>'
+                :'<span class="badge badge-success">Aktif</span>';
+    const wa = (t.wa||'').replace(/\D/g,'');
+    const waHref = `https://wa.me/62${wa.startsWith('0')?wa.slice(1):wa}?text=Halo%20${encodeURIComponent(t.nama)},%20mengenai%20kontrak%20${encodeURIComponent(t.rumah||'')}`;
+    return `<tr>
+      <td style="font-weight:500;">${t.nama}</td>
+      <td>${t.rumah||'—'}</td>
+      <td>${fmtRp(t.tarif||0)}</td>
+      <td>${months} bln</td>
+      <td style="font-weight:600;color:var(--teal-mid);">${fmtRp(prj)}</td>
+      <td>${chip} <a class="wa-btn" href="${waHref}" target="_blank" style="margin-left:4px;">WA</a></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── NOTIF ─────────────────────────────────
+function renderNotif() {
+  const urgent  = tenants.filter(t=>urgency(t)==='urgent');
+  const warning = tenants.filter(t=>urgency(t)==='warning');
+  let items = [];
+  urgent.forEach(t=>{
+    const d=daysLeft(t);
+    const wa=(t.wa||'').replace(/\D/g,'');
+    const waHref=`https://wa.me/62${wa.startsWith('0')?wa.slice(1):wa}?text=Halo%20${encodeURIComponent(t.nama)},%20kontrak%20kamu%20di%20${encodeURIComponent(t.rumah||'')}%20sudah%20hampir%20habis.`;
+    items.push({icon:'!',bg:'var(--red-light)',col:'var(--red)',text:`<b>${t.nama}</b> (${t.rumah}) ${d<=0?'kontraknya sudah habis!':'kontrak habis dalam '+d+' hari!'}`,sub:`<a class="wa-btn" href="${waHref}" target="_blank">Hubungi via WA</a>`,time:'Sekarang'});
+  });
+  warning.forEach(t=>{
+    const d=daysLeft(t);
+    const wa=(t.wa||'').replace(/\D/g,'');
+    const waHref=`https://wa.me/62${wa.startsWith('0')?wa.slice(1):wa}?text=Halo%20${encodeURIComponent(t.nama)},%20kontrak%20kamu%20di%20${encodeURIComponent(t.rumah||'')}%20akan%20habis%20dalam%20${d}%20hari.`;
+    items.push({icon:'i',bg:'var(--amber-light)',col:'var(--amber)',text:`<b>${t.nama}</b> (${t.rumah}) kontrak habis dalam ${d} hari`,sub:`<a class="wa-btn" href="${waHref}" target="_blank">Hubungi via WA</a>`,time:'Hari ini'});
+  });
+  if (!items.length) items.push({icon:'✓',bg:'var(--green-light)',col:'var(--green)',text:'Semua kontrak aman',sub:'Tidak ada yang perlu segera ditindak lanjuti',time:'—'});
+  items.push({icon:'i',bg:'var(--blue-light)',col:'var(--blue)',text:'Data tersinkron dari cloud',sub:'Akses dari device manapun dengan akun yang sama',time:'Otomatis'});
+  document.getElementById('notif-list').innerHTML = items.map(it=>`
+    <div class="notif-item">
+      <div class="notif-icon" style="background:${it.bg};color:${it.col};">${it.icon}</div>
+      <div style="flex:1;">
+        <div class="notif-text">${it.text}</div>
+        <div class="notif-sub">${it.sub}</div>
+      </div>
+      <div style="font-size:11px;color:var(--text3);white-space:nowrap;margin-left:8px;">${it.time}</div>
+    </div>`).join('');
+}
+
+function markRead() {
+  document.getElementById('notif-dot').classList.remove('show');
+  toast('Notifikasi ditandai dibaca');
+}
+
+// ── MODAL TENANT ──────────────────────────
+function openTenantModal(id) {
+  currentTenantId = id || null;
+  photoData = '';
+  const isEdit = !!id;
+  document.getElementById('modal-tenant-title').textContent = isEdit ? 'Edit Pengontrak' : 'Tambah Pengontrak';
+  document.getElementById('btn-delete').style.display = isEdit ? 'block' : 'none';
+  document.getElementById('delete-confirm').style.display = 'none';
+  document.getElementById('photo-preview').innerHTML = '<span style="font-size:11px;color:var(--text3);">Foto</span>';
+  ['f-name','f-wa','f-room','f-rate','f-start','f-dur','f-note'].forEach(id=>document.getElementById(id).value='');
+
+  if (isEdit) {
+    const t = tenants.find(x=>x.id===id);
+    if (!t) return;
+    document.getElementById('f-name').value  = t.nama||'';
+    document.getElementById('f-wa').value    = t.wa||'';
+    document.getElementById('f-room').value  = t.rumah||'';
+    document.getElementById('f-rate').value  = t.tarif||'';
+    document.getElementById('f-start').value = t.tanggal_masuk||'';
+    document.getElementById('f-dur').value   = t.durasi_bulan||'';
+    document.getElementById('f-note').value  = t.catatan||'';
+    if (t.foto_url) document.getElementById('photo-preview').innerHTML = `<img src="${t.foto_url}">`;
+  }
+  document.getElementById('modal-tenant').classList.add('open');
+}
+
+async function saveTenant() {
+  const btn = document.getElementById('btn-save-tenant');
+  const nama = document.getElementById('f-name').value.trim();
+  const wa   = document.getElementById('f-wa').value.trim();
+  const rumah= document.getElementById('f-room').value.trim();
+  const tarif= parseFloat(document.getElementById('f-rate').value)||0;
+  const start= document.getElementById('f-start').value;
+  const dur  = parseInt(document.getElementById('f-dur').value)||0;
+  const note = document.getElementById('f-note').value.trim();
+  if (!nama||!wa||!rumah||!start||!dur) { toast('Isi semua field wajib (*)', true); return; }
+
+  btn.disabled = true; btn.textContent = 'Menyimpan...';
+
+  // Upload foto ke Supabase Storage jika ada
+  let foto_url = currentTenantId ? (tenants.find(x=>x.id===currentTenantId)||{}).foto_url||'' : '';
+  if (photoData) {
+    const blob = await fetch(photoData).then(r=>r.blob());
+    const ext  = blob.type.split('/')[1]||'jpg';
+    const path = `pengontrak/${Date.now()}.${ext}`;
+    const { error: upErr } = await sb.storage.from('foto').upload(path, blob, { upsert: true });
+    if (!upErr) {
+      const { data: urlData } = sb.storage.from('foto').getPublicUrl(path);
+      foto_url = urlData.publicUrl;
+    }
+  }
+
+  const payload = { nama, wa, rumah, tarif, tanggal_masuk: start, durasi_bulan: dur, catatan: note, foto_url };
+  let error;
+  if (currentTenantId) {
+    ({ error } = await sb.from('pengontrak').update(payload).eq('id', currentTenantId));
+  } else {
+    ({ error } = await sb.from('pengontrak').insert([payload]));
+  }
+  btn.disabled = false; btn.textContent = 'Simpan';
+  if (error) { toast('Gagal menyimpan: '+error.message, true); return; }
+
+  closeModal('modal-tenant');
+  await loadTenants();
+  renderTenants(); renderDashboard(); renderFinance(); renderNotif();
+  toast(currentTenantId ? 'Pengontrak diperbarui' : 'Pengontrak ditambahkan');
+}
+
+let deleteConfirmed = false;
+function deleteTenant() {
+  const box = document.getElementById('delete-confirm');
+  if (!deleteConfirmed) {
+    box.style.display = 'block';
+    document.getElementById('btn-delete').textContent = 'Konfirmasi Hapus';
+    deleteConfirmed = true;
+    return;
+  }
+  confirmDeleteTenant();
+}
+
+async function confirmDeleteTenant() {
+  const { error } = await sb.from('pengontrak').delete().eq('id', currentTenantId);
+  if (error) { toast('Gagal hapus: '+error.message, true); return; }
+  closeModal('modal-tenant');
+  await loadTenants();
+  renderTenants(); renderDashboard(); renderFinance(); renderNotif();
+  toast('Pengontrak dihapus');
+  deleteConfirmed = false;
+}
+
+function previewPhoto(input) {
+  if (!input.files[0]) return;
+  const r = new FileReader();
+  r.onload = e => {
+    photoData = e.target.result;
+    document.getElementById('photo-preview').innerHTML = `<img src="${photoData}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+  };
+  r.readAsDataURL(input.files[0]);
+}
+
+// ── MODAL RUMAH ───────────────────────────
+function openRumahModal(id) {
+  currentRumahId = id || null;
+  const isEdit = !!id;
+  document.getElementById('modal-rumah-title').textContent = isEdit ? 'Edit Rumah' : 'Tambah Rumah';
+  document.getElementById('btn-del-rumah').style.display = isEdit ? 'block' : 'none';
+  ['r-name','r-addr','r-note'].forEach(x=>document.getElementById(x).value='');
+  if (isEdit) {
+    const r = rumahList.find(x=>x.id===id);
+    if (!r) return;
+    document.getElementById('r-name').value = r.nama||'';
+    document.getElementById('r-addr').value = r.alamat||'';
+    document.getElementById('r-note').value = r.catatan||'';
+  }
+  document.getElementById('modal-rumah').classList.add('open');
+}
+
+async function saveRumah() {
+  const btn = document.getElementById('btn-save-rumah');
+  const nama  = document.getElementById('r-name').value.trim();
+  const alamat= document.getElementById('r-addr').value.trim();
+  const cat   = document.getElementById('r-note').value.trim();
+  if (!nama) { toast('Nama rumah wajib diisi', true); return; }
+  btn.disabled = true; btn.textContent = 'Menyimpan...';
+  const payload = { nama, alamat, catatan: cat };
+  let error;
+  if (currentRumahId) {
+    ({ error } = await sb.from('rumah').update(payload).eq('id', currentRumahId));
+  } else {
+    ({ error } = await sb.from('rumah').insert([payload]));
+  }
+  btn.disabled = false; btn.textContent = 'Simpan';
+  if (error) { toast('Gagal: '+error.message, true); return; }
+  closeModal('modal-rumah');
+  await loadRumah();
+  renderRumah(); renderDashboard();
+  toast(currentRumahId ? 'Rumah diperbarui' : 'Rumah ditambahkan');
+}
+
+async function deleteRumah() {
+  if (!confirm('Hapus rumah ini? Pastikan tidak ada pengontrak aktif.')) return;
+  const { error } = await sb.from('rumah').delete().eq('id', currentRumahId);
+  if (error) { toast('Gagal hapus: '+error.message, true); return; }
+  closeModal('modal-rumah');
+  await loadRumah();
+  renderRumah(); renderDashboard();
+  toast('Rumah dihapus');
+}
+
+// ── PAGE NAV ──────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  const tabs={dashboard:0,pengontrak:1,rumah:2,keuangan:3,notifikasi:4};
+  const navTabs = document.querySelectorAll('.nav-tab');
+  if (navTabs[tabs[id]]) navTabs[tabs[id]].classList.add('active');
+  if (id==='pengontrak') renderTenants();
+  if (id==='rumah')      renderRumah();
+  if (id==='keuangan')   renderFinance();
+  if (id==='notifikasi') renderNotif();
+  if (id==='dashboard')  renderDashboard();
+}
+
+// ── MODAL HELPERS ─────────────────────────
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  deleteConfirmed = false;
+  const delBtn = document.getElementById('btn-delete');
+  if (delBtn) delBtn.textContent = 'Hapus';
+}
+function closeModalIf(e, id) {
+  if (e.target.id === id) closeModal(id);
+}
+
+// ── TOAST ─────────────────────────────────
+let toastTimer;
+function toast(msg, isError=false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (isError?' error':'');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.classList.remove('show'), 2800);
+}
+</script>
+
+<!--
+═══════════════════════════════════════════════════
+  PANDUAN SETUP SUPABASE
+═══════════════════════════════════════════════════
+
+1. BUAT AKUN & PROJECT
+   - Daftar di https://supabase.com
+   - Klik "New project", isi nama & password database
+   - Tunggu project siap (~1 menit)
+
+2. BUAT TABEL (di menu Table Editor atau SQL Editor)
+   Jalankan SQL berikut di SQL Editor:
+
+   CREATE TABLE rumah (
+     id      BIGSERIAL PRIMARY KEY,
+     nama    TEXT NOT NULL,
+     alamat  TEXT,
+     catatan TEXT,
+     created_at TIMESTAMPTZ DEFAULT NOW()
+   );
+
+   CREATE TABLE pengontrak (
+     id             BIGSERIAL PRIMARY KEY,
+     nama           TEXT NOT NULL,
+     wa             TEXT,
+     rumah          TEXT,
+     tarif          NUMERIC DEFAULT 0,
+     tanggal_masuk  DATE NOT NULL,
+     durasi_bulan   INTEGER NOT NULL,
+     catatan        TEXT,
+     foto_url       TEXT,
+     created_at     TIMESTAMPTZ DEFAULT NOW()
+   );
+
+   -- Row Level Security (hanya user login yg bisa akses)
+   ALTER TABLE rumah ENABLE ROW LEVEL SECURITY;
+   ALTER TABLE pengontrak ENABLE ROW LEVEL SECURITY;
+
+   CREATE POLICY "user bisa akses" ON rumah
+     FOR ALL USING (auth.role() = 'authenticated');
+   CREATE POLICY "user bisa akses" ON pengontrak
+     FOR ALL USING (auth.role() = 'authenticated');
+
+3. BUAT STORAGE BUCKET (untuk foto)
+   - Masuk ke menu Storage
+   - Buat bucket bernama: foto
+   - Set sebagai Public bucket
+
+4. DAFTARKAN AKUN KAMU
+   - Masuk ke Authentication → Users
+   - Klik "Invite user" atau "Add user"
+   - Masukkan email & password kamu
+
+5. AMBIL KONFIGURASI
+   - Masuk ke Settings → API
+   - Copy "Project URL" → tempel di SUPABASE_URL
+   - Copy "anon public" key → tempel di SUPABASE_ANON
+
+6. DEPLOY KE VERCEL
+   - Upload file ini ke GitHub (repo baru)
+   - Login ke https://vercel.com
+   - "Add New Project" → pilih repo GitHub
+   - Deploy → dapat link https://xxx.vercel.app
+
+═══════════════════════════════════════════════════
+-->
+</body>
+</html>
