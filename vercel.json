@@ -1,5 +1,5 @@
 {
   "rewrites": [
-    { "source": "/(.*)", "destination": "/kontrakanpro.html" }
+    { "source": "/(.*)", "destination": "/kontrakanpro(1).html" }
   ]
 }
