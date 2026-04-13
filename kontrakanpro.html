@@ -636,8 +636,8 @@ function handleKtpUpload(input){
   if(file.size>5*1024*1024){toast('File terlalu besar (maks 5MB)',true);return;}
   ktpFilename=file.name;
   const r=new FileReader();
-  r.onload=e=>{
-    ktpData=e.target.result;
+  r.onload=async e=>{
+    ktpData = file.type.startsWith('image/') ? await resizeImage(e.target.result,1200,1200) : e.target.result;
     const dz=document.getElementById('ktp-dropzone');
     dz.classList.add('has-file');
     dz.innerHTML=`<div class="upload-box-icon">✓</div><div class="upload-box-text" style="color:var(--teal);">File dipilih: ${ktpFilename}</div><div class="upload-box-sub">Klik untuk ganti</div>`;
@@ -743,6 +743,26 @@ function openTenantModal(id){
   }
   document.getElementById('modal-tenant').classList.add('open');
 }
+// Resize & compress image to base64 — keeps file size small for DB storage
+function resizeImage(dataUrl, maxW, maxH){
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>{
+      let w=img.width, h=img.height;
+      if(w>maxW||h>maxH){
+        const ratio=Math.min(maxW/w, maxH/h);
+        w=Math.round(w*ratio); h=Math.round(h*ratio);
+      }
+      const canvas=document.createElement('canvas');
+      canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      resolve(canvas.toDataURL('image/jpeg',0.82));
+    };
+    img.onerror=()=>resolve(dataUrl);
+    img.src=dataUrl;
+  });
+}
+
 async function saveTenant(){
   const btn=document.getElementById('btn-save-tenant');
   const nama=document.getElementById('f-name').value.trim();
@@ -756,30 +776,14 @@ async function saveTenant(){
   if(!nama||!wa||!rumah||!start||!dur){toast('Isi semua field wajib (*)',true);return;}
   btn.disabled=true; btn.textContent='Menyimpan...';
 
-  let foto_url = currentTenantId ? (tenants.find(x=>x.id===currentTenantId)||{}).foto_url||'' : '';
-  if(photoData){
-    try {
-      const fBlob = await fetch(photoData).then(r=>r.blob());
-      const fExt = fBlob.type.split('/')[1]||'jpg';
-      const fPath = 'foto/' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.' + fExt;
-      const {error:fErr} = await sb.storage.from('foto').upload(fPath, fBlob, {upsert:true, contentType:fBlob.type});
-      if(fErr){ toast('Peringatan: foto gagal diupload — ' + fErr.message, true); }
-      else { const {data:fud} = sb.storage.from('foto').getPublicUrl(fPath); foto_url = fud?.publicUrl||''; }
-    } catch(e){ toast('Foto error: '+e.message, true); }
-  }
+  // Foto & KTP disimpan sebagai base64 langsung di database — tidak butuh Storage bucket
+  const foto_url = photoData
+    ? await resizeImage(photoData, 400, 400)
+    : (currentTenantId ? (tenants.find(x=>x.id===currentTenantId)||{}).foto_url||'' : '');
 
-  let ktp_url = ktpUrlCurrent, ktp_filename = ktpFilename;
-  if(ktpData){
-    try {
-      const kBlob = await fetch(ktpData).then(r=>r.blob());
-      const kExt = kBlob.type==='application/pdf' ? 'pdf' : (kBlob.type.split('/')[1]||'jpg');
-      const kSafe = (nama||'ktp').replace(/\s+/g,'-').toLowerCase();
-      const kPath = 'ktp/' + kSafe + '-' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.' + kExt;
-      const {error:kErr} = await sb.storage.from('foto').upload(kPath, kBlob, {upsert:true, contentType:kBlob.type});
-      if(kErr){ toast('Peringatan: KTP gagal diupload — ' + kErr.message, true); }
-      else { const {data:kud} = sb.storage.from('foto').getPublicUrl(kPath); ktp_url = kud?.publicUrl||''; ktp_filename = ktpFilename; }
-    } catch(e){ toast('KTP error: '+e.message, true); }
-  }
+  let ktp_url = ktpUrlCurrent;
+  let ktp_filename = ktpFilename;
+  if(ktpData){ ktp_url = ktpData; ktp_filename = ktpFilename; }
 
   const payload={nama,wa,no_ktp:noKtp,rumah,tarif,tanggal_masuk:start,durasi_bulan:dur,catatan:note,foto_url,ktp_url,ktp_filename};
   let error;
@@ -804,7 +808,10 @@ async function deleteTenant(){
 function previewPhoto(input){
   if(!input.files[0]) return;
   const r=new FileReader();
-  r.onload=e=>{photoData=e.target.result;document.getElementById('photo-preview').innerHTML=`<img src="${photoData}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;};
+  r.onload=async e=>{
+    photoData = await resizeImage(e.target.result, 400, 400);
+    document.getElementById('photo-preview').innerHTML=`<img src="${photoData}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+  };
   r.readAsDataURL(input.files[0]);
 }
 
@@ -894,33 +901,14 @@ function toast(msg,isError=false){
   JALANKAN INI DI SUPABASE SQL EDITOR (sekali saja)
 ══════════════════════════════════════════════════════
 
--- 1. Tambah kolom baru di tabel pengontrak
+-- Tambah kolom untuk foto profil, KTP, dan nomor KTP
+-- Foto & KTP disimpan sebagai base64 langsung di DB (tidak butuh Storage)
 ALTER TABLE pengontrak
-  ADD COLUMN IF NOT EXISTS no_ktp TEXT,
-  ADD COLUMN IF NOT EXISTS ktp_url TEXT,
+  ADD COLUMN IF NOT EXISTS no_ktp      TEXT,
+  ADD COLUMN IF NOT EXISTS foto_url    TEXT,
+  ADD COLUMN IF NOT EXISTS ktp_url     TEXT,
   ADD COLUMN IF NOT EXISTS ktp_filename TEXT;
 
--- 2. Izinkan upload ke Storage bucket 'foto' (WAJIB agar foto & KTP tersimpan)
-INSERT INTO storage.buckets (id, name, public)
-  VALUES ('foto', 'foto', true)
-  ON CONFLICT (id) DO UPDATE SET public = true;
-
-CREATE POLICY "upload foto auth" ON storage.objects
-  FOR INSERT TO authenticated
-  WITH CHECK (bucket_id = 'foto');
-
-CREATE POLICY "baca foto publik" ON storage.objects
-  FOR SELECT TO public
-  USING (bucket_id = 'foto');
-
-CREATE POLICY "update foto auth" ON storage.objects
-  FOR UPDATE TO authenticated
-  USING (bucket_id = 'foto');
-
-══════════════════════════════════════════════════════
-  ATAU cara mudah via UI Supabase:
-  Storage → Buckets → foto → Settings → centang "Public bucket"
-  Storage → Policies → foto → New policy → "Give users access to own folder" → Allow all for authenticated
 ══════════════════════════════════════════════════════
 */
 </script>
