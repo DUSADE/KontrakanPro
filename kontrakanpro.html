@@ -3,7 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
 <title>KontrakanPro</title>
+<!-- ⚙️ ISI KREDENSIAL SUPABASE DI SINI -->
+<meta name="sb-url" content="https://qlzhgbirrquzafecoefs.supabase.co">
+<meta name="sb-key" content="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsemhnYmlycnF1emFmZWNvZWZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMzk2NDksImV4cCI6MjA5MDkxNTY0OX0.0sLS8d3s4ylru7lATXrkqjjG7MkH_iCdjNWJoFyZ8mc">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -462,11 +468,31 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
             Belum ada rumah. <a href="#" onclick="closeModal('modal-tenant');openRumahModal();return false;">Tambah rumah dulu →</a>
           </div>
         </div>
-        <div class="form-group"><label class="form-label">Tarif per bulan (Rp)</label><input class="form-input" id="f-rate" type="number" placeholder="1500000" min="0"></div>
+        <div class="form-group">
+          <label class="form-label">Biaya kontrak (Rp)</label>
+          <div style="display:flex;gap:6px;">
+            <input class="form-input" id="f-rate" type="number" placeholder="1500000" min="0" style="flex:1;" oninput="updateRateHint()">
+            <select class="form-input" id="f-rate-unit" onchange="updateRateHint()" style="width:auto;padding:9px 24px 9px 9px;flex-shrink:0;">
+              <option value="bulan">/ Bulan</option>
+              <option value="tahun">/ Tahun</option>
+            </select>
+          </div>
+          <div id="rate-hint" style="font-size:11px;color:var(--text3);margin-top:3px;"></div>
+        </div>
       </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Tanggal masuk *</label><input class="form-input" id="f-start" type="date"></div>
-        <div class="form-group"><label class="form-label">Lama kontrak (bulan) *</label><input class="form-input" id="f-dur" type="number" placeholder="6" min="1"></div>
+        <div class="form-group">
+          <label class="form-label">Lama kontrak *</label>
+          <div style="display:flex;gap:6px;">
+            <input class="form-input" id="f-dur" type="number" placeholder="1" min="1" style="flex:1;" oninput="updateDurHint()">
+            <select class="form-input" id="f-dur-unit" onchange="updateDurHint()" style="width:auto;padding:9px 24px 9px 9px;flex-shrink:0;">
+              <option value="bulan">Bulan</option>
+              <option value="tahun">Tahun</option>
+            </select>
+          </div>
+          <div id="dur-hint" style="font-size:11px;color:var(--text3);margin-top:3px;"></div>
+        </div>
       </div>
       <div class="form-group"><label class="form-label">Catatan</label><input class="form-input" id="f-note" type="text" placeholder="Keterangan tambahan..."></div>
 
@@ -535,9 +561,21 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
 
 <script>
 // ── CONFIG ─────────────────────────────────
-const SUPABASE_URL  = 'https://qlzhgbirrquzafecoefs.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsemhnYmlycnF1emFmZWNvZWZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMzk2NDksImV4cCI6MjA5MDkxNTY0OX0.0sLS8d3s4ylru7lATXrkqjjG7MkH_iCdjNWJoFyZ8mc';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+// ── SECURE CONFIG ──────────────────────────
+// Kredensial dibaca dari meta tag — JANGAN taruh langsung di sini.
+// Di file HTML, edit dua meta tag di <head>:
+//   <meta name="sb-url" content="https://xxx.supabase.co">
+//   <meta name="sb-key" content="eyJ...">
+function getMeta(name){
+  const el=document.querySelector(`meta[name="${name}"]`);
+  return el?el.content:'';
+}
+const _SB_URL=getMeta('sb-url');
+const _SB_KEY=getMeta('sb-key');
+if(!_SB_URL||!_SB_KEY){
+  document.getElementById('login-page').innerHTML=`<div style="padding:40px;text-align:center;font-family:sans-serif;"><h2 style="margin-bottom:12px;">⚠️ Konfigurasi belum diisi</h2><p style="color:#888;font-size:14px;">Edit file HTML, tambahkan di dalam &lt;head&gt;:<br><br><code style="background:#f5f5f5;padding:8px 12px;border-radius:6px;display:inline-block;margin-top:8px;">&lt;meta name="sb-url" content="https://xxx.supabase.co"&gt;<br>&lt;meta name="sb-key" content="eyJ..."&gt;</code></p></div>`;
+}
+const sb=(_SB_URL&&_SB_KEY)?supabase.createClient(_SB_URL,_SB_KEY):null;
 
 // ── STATE ──────────────────────────────────
 let tenants=[], rumahList=[];
@@ -566,6 +604,7 @@ function toggleTheme(){applyTheme(!document.documentElement.classList.contains('
 initTheme();
 
 // ── AUTH ───────────────────────────────────
+if(sb){
 sb.auth.onAuthStateChange((event,session)=>{
   if(session){
     document.getElementById('login-page').style.display='none';
@@ -577,7 +616,9 @@ sb.auth.onAuthStateChange((event,session)=>{
     document.getElementById('app').style.display='none';
   }
 });
+}
 async function doLogin(){
+  if(!sb){toast('Konfigurasi belum diisi',true);return;}
   const email=document.getElementById('login-email').value.trim();
   const pass=document.getElementById('login-pass').value;
   const btn=document.getElementById('login-btn');
@@ -623,6 +664,13 @@ function fmtRp(n){
   if(n>=1e6)return 'Rp '+(n/1e6).toFixed(1)+'jt';
   return 'Rp '+Math.round(n/1e3)+'rb';
 }
+function fmtDur(bulan){
+  if(!bulan)return '—';
+  const y=Math.floor(bulan/12),m=bulan%12;
+  if(y===0)return m+' bulan';
+  if(m===0)return y+' tahun';
+  return y+' tahun '+m+' bulan';
+}
 const addMonths=(d,n)=>{const r=new Date(d);r.setMonth(r.getMonth()+n);return r;};
 const daysDiff=(a,b)=>Math.round((b-a)/864e5);
 const daysLeft=t=>daysDiff(new Date(),addMonths(new Date(t.tanggal_masuk),t.durasi_bulan));
@@ -636,6 +684,62 @@ const DOC_META={
   surat:{label:'Surat Sewa',icon:'📝',color:'badge-warn'},
   lainnya:{label:'Lainnya',icon:'📎',color:'badge-purple'},
 };
+
+// ── RATE / DUR HINT ────────────────────────
+function updateRateHint(){
+  const val=parseFloat(document.getElementById('f-rate').value)||0;
+  const unit=document.getElementById('f-rate-unit').value;
+  const hint=document.getElementById('rate-hint');
+  if(!val){hint.textContent='';return;}
+  if(unit==='tahun'){
+    hint.textContent=`= ${fmtRp(val/12)} per bulan`;
+  } else {
+    hint.textContent=`= ${fmtRp(val*12)} per tahun`;
+  }
+}
+function updateDurHint(){
+  const val=parseInt(document.getElementById('f-dur').value)||0;
+  const unit=document.getElementById('f-dur-unit').value;
+  const hint=document.getElementById('dur-hint');
+  if(!val){hint.textContent='';return;}
+  if(unit==='tahun'){
+    hint.textContent=`= ${val*12} bulan`;
+  } else {
+    const y=Math.floor(val/12), m=val%12;
+    hint.textContent=y>0?(m>0?`= ${y} tahun ${m} bulan`:`= ${y} tahun`):'';
+  }
+}
+// Get duration in MONTHS from form
+function getDurInMonths(){
+  const val=parseInt(document.getElementById('f-dur').value)||0;
+  const unit=document.getElementById('f-dur-unit').value;
+  return unit==='tahun'?val*12:val;
+}
+// Get rate PER MONTH from form
+function getRatePerBulan(){
+  const val=parseFloat(document.getElementById('f-rate').value)||0;
+  const unit=document.getElementById('f-rate-unit').value;
+  return unit==='tahun'?val/12:val;
+}
+// Set form fields from stored (bulan-based) values
+function setDurForm(bulan){
+  if(!bulan){document.getElementById('f-dur').value='';document.getElementById('f-dur-unit').value='bulan';return;}
+  if(bulan%12===0&&bulan>=12){
+    document.getElementById('f-dur').value=bulan/12;
+    document.getElementById('f-dur-unit').value='tahun';
+  } else {
+    document.getElementById('f-dur').value=bulan;
+    document.getElementById('f-dur-unit').value='bulan';
+  }
+  updateDurHint();
+}
+function setRateForm(perBulan){
+  if(!perBulan){document.getElementById('f-rate').value='';document.getElementById('f-rate-unit').value='bulan';return;}
+  // Always show as per-bulan stored value
+  document.getElementById('f-rate').value=Math.round(perBulan);
+  document.getElementById('f-rate-unit').value='bulan';
+  updateRateHint();
+}
 
 // ── IMAGE RESIZE ───────────────────────────
 function resizeImage(dataUrl,maxW,maxH){
@@ -820,9 +924,9 @@ function renderTenants(){
       </div>
       <div class="tcard-meta">
         <div class="tcard-meta-item"><div class="tcard-meta-label">WhatsApp</div>${t.wa||'—'}</div>
-        <div class="tcard-meta-item"><div class="tcard-meta-label">Tarif</div>${fmtRp(t.tarif||0)}/bln</div>
+        <div class="tcard-meta-item"><div class="tcard-meta-label">Tarif</div>${fmtRp(t.tarif||0)}<span style="font-size:9px;color:var(--text3);">/bln</span></div>
         <div class="tcard-meta-item"><div class="tcard-meta-label">Masuk</div>${new Date(t.tanggal_masuk).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'})}</div>
-        <div class="tcard-meta-item"><div class="tcard-meta-label">Durasi</div>${t.durasi_bulan} bulan</div>
+        <div class="tcard-meta-item"><div class="tcard-meta-label">Durasi</div>${fmtDur(t.durasi_bulan)}</div>
       </div>
       <div>
         <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:3px;"><span>Sisa: ${dStr}</span><span>Habis: ${end}</span></div>
@@ -872,7 +976,7 @@ function renderFinance(){
     const chip=ug==='urgent'?'<span class="badge badge-danger">Kritis</span>':ug==='warning'?'<span class="badge badge-warn">Hampir</span>':'<span class="badge badge-success">Aktif</span>';
     const wa=(t.wa||'').replace(/\D/g,'');
     const wl=`https://wa.me/62${wa.startsWith('0')?wa.slice(1):wa}?text=Halo%20${encodeURIComponent(t.nama)}`;
-    return `<tr><td style="font-weight:600;">${t.nama}</td><td>${t.rumah||'—'}</td><td>${fmtRp(t.tarif||0)}</td><td>${months} bln</td><td style="font-weight:700;color:var(--teal-mid);">${fmtRp(prj)}</td><td>${chip} <a class="wa-btn" href="${wl}" target="_blank">WA</a></td></tr>`;
+    return `<tr><td style="font-weight:600;">${t.nama}</td><td>${t.rumah||'—'}</td><td>${fmtRp(t.tarif||0)}/bln</td><td>${fmtDur(months*1)}</td><td style="font-weight:700;color:var(--teal-mid);">${fmtRp(prj)}</td><td>${chip} <a class="wa-btn" href="${wl}" target="_blank">WA</a></td></tr>`;
   }).join('');
 }
 
@@ -1001,7 +1105,13 @@ function openTenantModal(id){
   document.getElementById('btn-delete').style.display=isEdit?'block':'none';
   document.getElementById('btn-delete').textContent='Hapus';
   document.getElementById('photo-preview').innerHTML='<span style="font-size:11px;color:var(--text3);">Foto</span>';
-  ['f-name','f-wa','f-ktp-no','f-rate','f-start','f-dur','f-note'].forEach(x=>document.getElementById(x).value='');
+  ['f-name','f-wa','f-ktp-no','f-note'].forEach(x=>document.getElementById(x).value='');
+  document.getElementById('f-rate').value='';
+  document.getElementById('f-rate-unit').value='bulan';
+  document.getElementById('f-dur').value='';
+  document.getElementById('f-dur-unit').value='bulan';
+  document.getElementById('rate-hint').textContent='';
+  document.getElementById('dur-hint').textContent='';
   populateRoomSelect(isEdit?(tenants.find(x=>x.id===id)||{}).rumah||'':'');
   renderDocList();
 
@@ -1010,10 +1120,9 @@ function openTenantModal(id){
     document.getElementById('f-name').value=t.nama||'';
     document.getElementById('f-wa').value=t.wa||'';
     document.getElementById('f-ktp-no').value=t.no_ktp||'';
-    document.getElementById('f-rate').value=t.tarif||'';
+    setRateForm(t.tarif||0);
     document.getElementById('f-start').value=t.tanggal_masuk||'';
-    document.getElementById('f-dur').value=t.durasi_bulan||'';
-    document.getElementById('f-note').value=t.catatan||'';
+    setDurForm(t.durasi_bulan||0);    document.getElementById('f-note').value=t.catatan||'';
     if(t.foto_url) document.getElementById('photo-preview').innerHTML=`<img src="${t.foto_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
     // Load existing berkas
     if(t.berkas&&Array.isArray(t.berkas)){
@@ -1030,9 +1139,9 @@ async function saveTenant(){
   const wa=document.getElementById('f-wa').value.trim();
   const noKtp=document.getElementById('f-ktp-no').value.trim();
   const rumah=document.getElementById('f-room').value;
-  const tarif=parseFloat(document.getElementById('f-rate').value)||0;
+  const tarif=getRatePerBulan();   // always stored as per-bulan
   const start=document.getElementById('f-start').value;
-  const dur=parseInt(document.getElementById('f-dur').value)||0;
+  const dur=getDurInMonths();       // always stored as months
   const note=document.getElementById('f-note').value.trim();
   if(!nama||!wa||!rumah||!start||!dur){toast('Isi semua field wajib (*)',true);return;}
   btn.disabled=true;btn.textContent='Menyimpan...';
