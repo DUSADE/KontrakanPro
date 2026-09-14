@@ -333,10 +333,11 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
               <th onclick="setSortCol('masuk')">Tgl Masuk <span class="sort-arrow" id="sarr-masuk">↕</span></th>
               <th onclick="setSortCol('sisa')">Sisa <span class="sort-arrow" id="sarr-sisa">↕</span></th>
               <th>Status</th>
+              <th>Bayar</th>
               <th>Berkas</th>
             </tr>
           </thead>
-          <tbody id="ds-tbody"><tr><td colspan="7"><div class="loading-spinner"><div class="spinner"></div></div></td></tr></tbody>
+          <tbody id="ds-tbody"><tr><td colspan="8"><div class="loading-spinner"><div class="spinner"></div></div></td></tr></tbody>
         </table>
       </div>
     </div>
@@ -578,7 +579,7 @@ if(!_SB_URL||!_SB_KEY){
 const sb=(_SB_URL&&_SB_KEY)?supabase.createClient(_SB_URL,_SB_KEY):null;
 
 // ── STATE ──────────────────────────────────
-let tenants=[], rumahList=[];
+let tenants=[], rumahList=[], payments=[];
 let currentTenantId=null, currentRumahId=null;
 let filterMode='all', sortAZ=false, deleteStep=0;
 let photoData='';
@@ -642,7 +643,7 @@ document.getElementById('login-pass').addEventListener('keydown',e=>{if(e.key===
 
 // ── LOAD ───────────────────────────────────
 async function loadAll(){
-  await Promise.all([loadRumah(),loadTenants()]);
+  await Promise.all([loadRumah(),loadTenants(),loadPayments()]);
   renderDashboard();renderTenants();renderRumah();renderFinance();renderNotif();
 }
 async function loadTenants(){
@@ -652,6 +653,10 @@ async function loadTenants(){
 async function loadRumah(){
   const {data,error}=await sb.from('rumah').select('*').order('nama');
   if(!error&&data) rumahList=data;
+}
+async function loadPayments(){
+  const {data,error}=await sb.from('pembayaran').select('*');
+  if(!error&&data) payments=data;
 }
 
 // ── HELPERS ────────────────────────────────
@@ -683,6 +688,33 @@ const daysDiff=(a,b)=>Math.round((b-a)/864e5);
 const daysLeft=t=>daysDiff(new Date(),addMonths(new Date(t.tanggal_masuk),t.durasi_bulan));
 const pct=t=>{const s=new Date(t.tanggal_masuk),e=addMonths(s,t.durasi_bulan),tot=daysDiff(s,e),el=daysDiff(s,new Date());return Math.min(100,Math.max(0,Math.round(el/tot*100)));};
 const urgency=t=>{const d=daysLeft(t);return d<=7?'urgent':d<=30?'warning':'ok';};
+
+// ── PEMBAYARAN / TUNGGAKAN ──────────────────
+// Daftar bulan yang sudah jatuh tempo untuk sebuah pengontrak, dari tanggal
+// masuk sampai bulan berjalan (tidak melewati akhir kontrak).
+function getDueMonths(t){
+  const start=new Date(t.tanggal_masuk);
+  const end=addMonths(start,t.durasi_bulan);
+  const now=new Date();
+  const lastDue=now<end?now:end;
+  const months=[];
+  let cursor=new Date(start.getFullYear(),start.getMonth(),1);
+  while(cursor<=lastDue){
+    const key=cursor.getFullYear()+'-'+String(cursor.getMonth()+1).padStart(2,'0');
+    months.push({key,date:new Date(cursor),label:cursor.toLocaleString('id-ID',{month:'long',year:'numeric'})});
+    cursor=addMonths(cursor,1);
+  }
+  return months;
+}
+function getPaidKeys(tenantId){
+  return new Set(payments.filter(p=>p.pengontrak_id===tenantId).map(p=>String(p.bulan).slice(0,7)));
+}
+function getArrears(t){
+  const due=getDueMonths(t);
+  const paid=getPaidKeys(t.id);
+  const unpaid=due.filter(m=>!paid.has(m.key));
+  return{count:unpaid.length,amount:unpaid.length*Number(t.tarif||0),months:unpaid};
+}
 
 // DOC TYPE META
 const DOC_META={
@@ -866,12 +898,16 @@ function renderDaftarSewa(){
   });
 
   const tbody=document.getElementById('ds-tbody');
-  if(!list.length){tbody.innerHTML='<tr><td colspan="7"><div class="empty-state">Tidak ada data</div></td></tr>';return;}
+  if(!list.length){tbody.innerHTML='<tr><td colspan="8"><div class="empty-state">Tidak ada data</div></td></tr>';return;}
 
   tbody.innerHTML=list.map(t=>{
     const d=daysLeft(t),ug=urgency(t);
     const chip=ug==='urgent'?'<span class="badge badge-danger">Kritis</span>':ug==='warning'?'<span class="badge badge-warn">Hampir</span>':'<span class="badge badge-success">Aktif</span>';
     const dStr=d<=0?`<span style="color:var(--red);font-weight:700;">Habis!</span>`:ug==='urgent'?`<span style="color:var(--red);font-weight:700;">${d}hr</span>`:ug==='warning'?`<span style="color:var(--amber);font-weight:700;">${d}hr</span>`:`${d}hr`;
+
+    // status pembayaran
+    const arr=getArrears(t);
+    const bayarChip=arr.count===0?'<span class="badge badge-success">Lunas</span>':`<span class="badge badge-danger">Nunggak ${arr.count}bln</span>`;
 
     // berkas badges
     let berkasHtml='<span style="font-size:11px;color:var(--text3);">—</span>';
@@ -891,6 +927,7 @@ function renderDaftarSewa(){
       <td>${t.tanggal_masuk?new Date(t.tanggal_masuk).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}):'—'}</td>
       <td>${dStr}</td>
       <td>${chip}</td>
+      <td>${bayarChip}</td>
       <td>${berkasHtml}</td>
     </tr>`;
   }).join('');
@@ -921,13 +958,19 @@ function renderTenants(){
       docBadges=`<div class="doc-badges">${Object.entries(counts).map(([type,cnt])=>{const m=DOC_META[type]||DOC_META.lainnya;return `<span class="doc-badge badge ${m.color}">${m.icon} ${m.label}${cnt>1?' ×'+cnt:''}</span>`;}).join('')}</div>`;
     }
 
+    const arr=getArrears(t);
+    const bayarChip=arr.count===0?'<span class="badge badge-success">Lunas</span>':`<span class="badge badge-danger">Nunggak ${arr.count}bln</span>`;
+
     return `<div class="tcard ${ug!=='ok'?ug:''}" onclick="openTenantModal(${t.id})">
       <div class="tcard-top">${avatar}
         <div style="flex:1;min-width:0;">
           <div class="tcard-name">${t.nama}</div>
           <div class="tcard-room">${t.rumah||'—'}</div>
         </div>
-        ${ug==='urgent'?'<span class="badge badge-danger">Kritis</span>':ug==='warning'?'<span class="badge badge-warn">Segera</span>':''}
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;">
+          ${ug==='urgent'?'<span class="badge badge-danger">Kritis</span>':ug==='warning'?'<span class="badge badge-warn">Segera</span>':''}
+          ${bayarChip}
+        </div>
       </div>
       <div class="tcard-meta">
         <div class="tcard-meta-item"><div class="tcard-meta-label">WhatsApp</div>${t.wa||'—'}</div>
