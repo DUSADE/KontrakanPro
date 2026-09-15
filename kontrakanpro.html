@@ -270,6 +270,7 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
       <button class="nav-tab" onclick="showPage('rumah')">Rumah</button>
       <button class="nav-tab" onclick="showPage('keuangan')">Keuangan</button>
       <button class="nav-tab" onclick="showPage('notifikasi')">Notifikasi</button>
+      <button class="nav-tab" onclick="showPage('riwayat')">Riwayat</button>
     </div>
     <div class="topbar-right">
       <button class="icon-btn" onclick="toggleTheme()" title="Ganti tema">
@@ -406,6 +407,26 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
     </div>
   </div>
 
+  <!-- RIWAYAT -->
+  <div class="page" id="page-riwayat">
+    <div class="metric-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));margin-bottom:13px;">
+      <div class="metric-card"><div class="metric-label">Total Pendapatan Historis</div><div class="metric-value" id="riw-total" style="color:var(--teal-mid)">—</div><div class="metric-sub">dari pengontrak yang sudah pindah</div></div>
+      <div class="metric-card"><div class="metric-label">Jumlah Riwayat</div><div class="metric-value" id="riw-count">—</div><div class="metric-sub">pengontrak tercatat</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Riwayat Pengontrak</div>
+        <input class="search-box" id="riw-search" placeholder="Cari nama/rumah..." oninput="renderRiwayat()" style="max-width:200px;flex:unset;">
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="ftable">
+          <thead><tr><th>Nama</th><th>Rumah</th><th>Periode Sewa</th><th>Durasi</th><th>Biaya Kontrak</th><th>Total Diterima</th></tr></thead>
+          <tbody id="riw-tbody"><tr><td colspan="6"><div class="loading-spinner"><div class="spinner"></div></div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <!-- BOTTOM NAV -->
   <nav class="bottom-nav">
     <div class="bottom-nav-inner">
@@ -428,6 +449,10 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
       <button class="bnav-item" id="bn-notifikasi" onclick="showPage('notifikasi')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         Notifikasi
+      </button>
+      <button class="bnav-item" id="bn-riwayat" onclick="showPage('riwayat')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
+        Riwayat
       </button>
     </div>
   </nav>
@@ -541,7 +566,10 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
 
     </div>
     <div class="modal-foot">
-      <button class="btn-danger" id="btn-delete" onclick="deleteTenant()" style="display:none">Hapus</button>
+      <div style="display:flex;gap:7px;margin-right:auto;">
+        <button class="btn-danger" id="btn-delete" onclick="deleteTenant()" style="display:none">Hapus</button>
+        <button class="btn-cancel" id="btn-archive" onclick="archiveTenant()" style="display:none;border-color:var(--amber);color:var(--amber);">Pindah ke Riwayat</button>
+      </div>
       <button class="btn-cancel" onclick="closeModal('modal-tenant')">Batal</button>
       <button class="btn-save" id="btn-save-tenant" onclick="saveTenant()">Simpan</button>
     </div>
@@ -589,7 +617,7 @@ if(!_SB_URL||!_SB_KEY){
 const sb=(_SB_URL&&_SB_KEY)?supabase.createClient(_SB_URL,_SB_KEY):null;
 
 // ── STATE ──────────────────────────────────
-let tenants=[], rumahList=[], payments=[];
+let tenants=[], rumahList=[], payments=[], riwayat=[];
 let currentTenantId=null, currentRumahId=null;
 let filterMode='all', sortAZ=false, deleteStep=0;
 let photoData='';
@@ -653,8 +681,8 @@ document.getElementById('login-pass').addEventListener('keydown',e=>{if(e.key===
 
 // ── LOAD ───────────────────────────────────
 async function loadAll(){
-  await Promise.all([loadRumah(),loadTenants(),loadPayments()]);
-  renderDashboard();renderTenants();renderRumah();renderFinance();renderNotif();
+  await Promise.all([loadRumah(),loadTenants(),loadPayments(),loadRiwayat()]);
+  renderDashboard();renderTenants();renderRumah();renderFinance();renderNotif();renderRiwayat();
 }
 async function loadTenants(){
   const {data,error}=await sb.from('pengontrak').select('*').order('nama');
@@ -667,6 +695,10 @@ async function loadRumah(){
 async function loadPayments(){
   const {data,error}=await sb.from('pembayaran').select('*');
   if(!error&&data) payments=data;
+}
+async function loadRiwayat(){
+  const {data,error}=await sb.from('riwayat_pengontrak').select('*').order('tanggal_keluar',{ascending:false});
+  if(!error&&data) riwayat=data;
 }
 
 // ── HELPERS ────────────────────────────────
@@ -1141,6 +1173,36 @@ function renderNotif(){
 }
 function markRead(){document.getElementById('notif-dot').classList.remove('show');toast('Notifikasi ditandai dibaca');}
 
+// ── RIWAYAT ────────────────────────────────
+function renderRiwayat(){
+  const totalEl=document.getElementById('riw-total');
+  const countEl=document.getElementById('riw-count');
+  if(!totalEl||!countEl)return; // halaman belum di-render (misal saat load awal)
+  const total=riwayat.reduce((a,r)=>a+Number(r.total_diterima||0),0);
+  totalEl.textContent=fmtRpExact(total);
+  countEl.textContent=riwayat.length;
+
+  const q=(document.getElementById('riw-search')?.value||'').toLowerCase();
+  const list=riwayat.filter(r=>(r.nama||'').toLowerCase().includes(q)||(r.rumah||'').toLowerCase().includes(q));
+  const tbody=document.getElementById('riw-tbody');
+  if(!list.length){tbody.innerHTML='<tr><td colspan="6"><div class="empty-state">Belum ada riwayat pengontrak</div></td></tr>';return;}
+
+  tbody.innerHTML=list.map(r=>{
+    const masuk=r.tanggal_masuk?new Date(r.tanggal_masuk).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}):'—';
+    const keluar=r.tanggal_keluar?new Date(r.tanggal_keluar).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}):'—';
+    const durBulan=(r.tanggal_masuk&&r.tanggal_keluar)?Math.max(0,Math.round(daysDiff(new Date(r.tanggal_masuk),new Date(r.tanggal_keluar))/30)):0;
+    const biaya=r.siklus_bayar==='tahunan'?fmtRpExact(Number(r.tarif||0)*12)+'/thn':fmtRpExact(Number(r.tarif||0))+'/bln';
+    return `<tr>
+      <td style="font-weight:600;">${r.nama||'—'}</td>
+      <td>${r.rumah||'—'}</td>
+      <td>${masuk} – ${keluar}</td>
+      <td>${fmtDur(durBulan)}</td>
+      <td>${biaya}</td>
+      <td style="font-weight:700;color:var(--teal-mid);">${fmtRpExact(r.total_diterima||0)}</td>
+    </tr>`;
+  }).join('');
+}
+
 // ── DOCUMENT UPLOAD ────────────────────────
 function triggerDocUpload(type){
   currentDocType=type;
@@ -1252,6 +1314,7 @@ function openTenantModal(id){
   document.getElementById('modal-tenant-title').textContent=isEdit?'Edit Pengontrak':'Tambah Pengontrak';
   document.getElementById('btn-delete').style.display=isEdit?'block':'none';
   document.getElementById('btn-delete').textContent='Hapus';
+  document.getElementById('btn-archive').style.display=isEdit?'block':'none';
   document.getElementById('photo-preview').innerHTML='<span style="font-size:11px;color:var(--text3);">Foto</span>';
   ['f-name','f-wa','f-ktp-no','f-note'].forEach(x=>document.getElementById(x).value='');
   document.getElementById('f-rate').value='';
@@ -1330,6 +1393,32 @@ async function deleteTenant(){
   toast('Pengontrak dihapus');
 }
 
+// Pindahkan pengontrak yang sudah keluar/pindah ke tabel riwayat, sambil
+// menyimpan total uang yang sudah diterima darinya (dari riwayat pembayaran),
+// lalu hapus dari daftar pengontrak aktif sehingga rumahnya jadi kosong lagi.
+async function archiveTenant(){
+  const t=tenants.find(x=>x.id===currentTenantId);
+  if(!t)return;
+  if(!confirm(`Pindahkan "${t.nama}" ke Riwayat?\n\nData pengontrak aktif akan dihapus dan rumah "${t.rumah||'-'}" akan menjadi kosong. Total pendapatan dari riwayat pembayarannya akan disimpan.`))return;
+
+  const totalDiterima=payments.filter(p=>p.pengontrak_id===currentTenantId).reduce((a,p)=>a+Number(p.jumlah||0),0);
+  const payload={
+    nama:t.nama, wa:t.wa, rumah:t.rumah, tarif:t.tarif, siklus_bayar:t.siklus_bayar||'bulanan',
+    tanggal_masuk:t.tanggal_masuk, tanggal_keluar:new Date().toISOString().slice(0,10),
+    total_diterima:totalDiterima, catatan:t.catatan||''
+  };
+  const {error:insErr}=await sb.from('riwayat_pengontrak').insert([payload]);
+  if(insErr){toast('Gagal simpan riwayat: '+insErr.message,true);return;}
+
+  const {error:delErr}=await sb.from('pengontrak').delete().eq('id',currentTenantId);
+  if(delErr){toast('Gagal hapus data aktif: '+delErr.message,true);return;}
+
+  closeModal('modal-tenant');
+  await Promise.all([loadTenants(),loadPayments(),loadRiwayat()]);
+  renderTenants();renderDashboard();renderFinance();renderNotif();renderRiwayat();renderRumah();
+  toast(`${t.nama} dipindahkan ke Riwayat`);
+}
+
 // ── MODAL RUMAH ────────────────────────────
 function openRumahModal(id){
   currentRumahId=id||null;
@@ -1369,13 +1458,14 @@ function showPage(id){
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.bnav-item').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
-  const tabs={dashboard:0,pengontrak:1,rumah:2,keuangan:3,notifikasi:4};
+  const tabs={dashboard:0,pengontrak:1,rumah:2,keuangan:3,notifikasi:4,riwayat:5};
   document.querySelectorAll('.nav-tab')[tabs[id]]?.classList.add('active');
   document.getElementById('bn-'+id)?.classList.add('active');
   if(id==='pengontrak') renderTenants();
   if(id==='rumah') renderRumah();
   if(id==='keuangan') renderFinance();
   if(id==='notifikasi') renderNotif();
+  if(id==='riwayat') renderRiwayat();
   if(id==='dashboard') renderDashboard();
   window.scrollTo(0,0);
 }
@@ -1457,6 +1547,24 @@ ALTER TABLE pengontrak
   ADD COLUMN IF NOT EXISTS foto_url TEXT,
   ADD COLUMN IF NOT EXISTS siklus_bayar TEXT DEFAULT 'bulanan',
   ADD COLUMN IF NOT EXISTS berkas  JSONB DEFAULT '[]'::jsonb;
+
+-- Tabel riwayat pengontrak (arsip pengontrak yang sudah pindah/keluar,
+-- beserta total pendapatan yang sudah diterima darinya)
+CREATE TABLE IF NOT EXISTS riwayat_pengontrak (
+  id             BIGSERIAL PRIMARY KEY,
+  nama           TEXT,
+  wa             TEXT,
+  rumah          TEXT,
+  tarif          NUMERIC DEFAULT 0,
+  siklus_bayar   TEXT DEFAULT 'bulanan',
+  tanggal_masuk  DATE,
+  tanggal_keluar DATE,
+  total_diterima NUMERIC DEFAULT 0,
+  catatan        TEXT,
+  arsip_at       TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE riwayat_pengontrak ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "akses auth" ON riwayat_pengontrak FOR ALL USING (auth.role()='authenticated');
 
 ══════════════════════════════════════════════════
 */
