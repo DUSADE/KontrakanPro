@@ -697,34 +697,48 @@ const pct=t=>{const s=new Date(t.tanggal_masuk),e=addMonths(s,t.durasi_bulan),to
 const urgency=t=>{const d=daysLeft(t);return d<=7?'urgent':d<=30?'warning':'ok';};
 
 // ── PEMBAYARAN / TUNGGAKAN ──────────────────
-// Daftar bulan yang sudah jatuh tempo untuk sebuah pengontrak, dari tanggal
-// masuk sampai bulan berjalan (tidak melewati akhir kontrak).
-function getDueMonths(t){
+// Daftar periode yang sudah jatuh tempo untuk sebuah pengontrak, dari tanggal
+// masuk sampai sekarang (tidak melewati akhir kontrak). Jika siklus_bayar
+// pengontrak = 'tahunan', satu periode = 12 bulan (bayar setahun sekali),
+// kalau tidak, satu periode = 1 bulan.
+function getDuePeriods(t){
   const start=new Date(t.tanggal_masuk);
   const end=addMonths(start,t.durasi_bulan);
   const now=new Date();
   const lastDue=now<end?now:end;
-  const months=[];
+  const isYearly=t.siklus_bayar==='tahunan';
+  const step=isYearly?12:1;
+  const periods=[];
   let cursor=new Date(start.getFullYear(),start.getMonth(),1);
   while(cursor<=lastDue){
+    const periodEnd=addMonths(cursor,step);
     const key=cursor.getFullYear()+'-'+String(cursor.getMonth()+1).padStart(2,'0');
-    months.push({key,date:new Date(cursor),label:cursor.toLocaleString('id-ID',{month:'long',year:'numeric'})});
-    cursor=addMonths(cursor,1);
+    let label;
+    if(isYearly){
+      const lastMonthOfPeriod=addMonths(cursor,step-1);
+      label=cursor.toLocaleString('id-ID',{month:'short',year:'numeric'})+' – '+lastMonthOfPeriod.toLocaleString('id-ID',{month:'short',year:'numeric'});
+    } else {
+      label=cursor.toLocaleString('id-ID',{month:'long',year:'numeric'});
+    }
+    const amount=isYearly?Number(t.tarif||0)*step:Number(t.tarif||0);
+    periods.push({key,date:new Date(cursor),label,amount});
+    cursor=periodEnd;
   }
-  return months;
+  return periods;
 }
 function getPaidKeys(tenantId){
   return new Set(payments.filter(p=>p.pengontrak_id===tenantId).map(p=>String(p.bulan).slice(0,7)));
 }
 function getArrears(t){
-  const due=getDueMonths(t);
+  const due=getDuePeriods(t);
   const paid=getPaidKeys(t.id);
   const unpaid=due.filter(m=>!paid.has(m.key));
-  return{count:unpaid.length,amount:unpaid.length*Number(t.tarif||0),months:unpaid};
+  const amount=unpaid.reduce((a,m)=>a+m.amount,0);
+  return{count:unpaid.length,amount,unit:t.siklus_bayar==='tahunan'?'thn':'bln',months:unpaid};
 }
 
-// Render daftar bulan jatuh tempo untuk pengontrak yang sedang dibuka di modal,
-// dengan tombol untuk menandai lunas / batal lunas.
+// Render daftar periode jatuh tempo untuk pengontrak yang sedang dibuka di
+// modal, dengan tombol untuk menandai lunas / batal lunas per periode.
 function renderPaymentList(){
   const wrap=document.getElementById('payment-list');
   const emptyNew=document.getElementById('payment-empty-new');
@@ -736,34 +750,34 @@ function renderPaymentList(){
   emptyNew.style.display='none';
   const t=tenants.find(x=>x.id===currentTenantId);
   if(!t){wrap.innerHTML='';return;}
-  const due=getDueMonths(t).slice().reverse(); // terbaru di atas
+  const due=getDuePeriods(t).slice().reverse(); // terbaru di atas
   const paidSet=getPaidKeys(t.id);
-  if(!due.length){wrap.innerHTML='<div class="doc-empty">Belum ada bulan yang jatuh tempo</div>';return;}
+  if(!due.length){wrap.innerHTML='<div class="doc-empty">Belum ada periode yang jatuh tempo</div>';return;}
   wrap.innerHTML=due.map(m=>{
     const isPaid=paidSet.has(m.key);
     return `<div class="doc-item">
       <span class="doc-item-icon">${isPaid?'✅':'🕓'}</span>
       <div class="doc-item-info">
         <div class="doc-item-name">${m.label}</div>
-        <div class="doc-item-meta">${fmtRpExact(t.tarif||0)}${isPaid?' · Lunas':' · Belum dibayar'}</div>
+        <div class="doc-item-meta">${fmtRpExact(m.amount)}${isPaid?' · Lunas':' · Belum dibayar'}</div>
       </div>
       <div class="doc-item-actions">
-        <button class="${isPaid?'doc-rm-btn':'doc-dl-btn'}" onclick="togglePayment('${m.key}',${Number(t.tarif||0)})">${isPaid?'Batalkan':'Tandai Lunas'}</button>
+        <button class="${isPaid?'doc-rm-btn':'doc-dl-btn'}" onclick="togglePayment('${m.key}',${m.amount})">${isPaid?'Batalkan':'Tandai Lunas'}</button>
       </div>
     </div>`;
   }).join('');
 }
 
-async function togglePayment(monthKey,tarifAmount){
+async function togglePayment(periodKey,amount){
   if(!currentTenantId)return;
-  const existing=payments.find(p=>p.pengontrak_id===currentTenantId&&String(p.bulan).slice(0,7)===monthKey);
+  const existing=payments.find(p=>p.pengontrak_id===currentTenantId&&String(p.bulan).slice(0,7)===periodKey);
   if(existing){
     const {error}=await sb.from('pembayaran').delete().eq('id',existing.id);
     if(error){toast('Gagal: '+error.message,true);return;}
     payments=payments.filter(p=>p.id!==existing.id);
     toast('Ditandai belum bayar');
   } else {
-    const payload={pengontrak_id:currentTenantId,bulan:monthKey+'-01',jumlah:tarifAmount,tanggal_bayar:new Date().toISOString().slice(0,10)};
+    const payload={pengontrak_id:currentTenantId,bulan:periodKey+'-01',jumlah:amount,tanggal_bayar:new Date().toISOString().slice(0,10)};
     const {data,error}=await sb.from('pembayaran').insert([payload]).select();
     if(error){toast('Gagal: '+error.message,true);return;}
     if(data&&data[0]) payments.push(data[0]);
@@ -829,11 +843,15 @@ function setDurForm(bulan){
   }
   updateDurHint();
 }
-function setRateForm(perBulan){
-  if(!perBulan){document.getElementById('f-rate').value='';document.getElementById('f-rate-unit').value='bulan';return;}
-  // Always show as per-bulan stored value
-  document.getElementById('f-rate').value=Math.round(perBulan);
-  document.getElementById('f-rate-unit').value='bulan';
+function setRateForm(perBulan,siklus){
+  if(!perBulan){document.getElementById('f-rate').value='';document.getElementById('f-rate-unit').value='bulan';updateRateHint();return;}
+  if(siklus==='tahunan'){
+    document.getElementById('f-rate').value=Math.round(perBulan*12);
+    document.getElementById('f-rate-unit').value='tahun';
+  } else {
+    document.getElementById('f-rate').value=Math.round(perBulan);
+    document.getElementById('f-rate-unit').value='bulan';
+  }
   updateRateHint();
 }
 
@@ -964,7 +982,7 @@ function renderDaftarSewa(){
 
     // status pembayaran
     const arr=getArrears(t);
-    const bayarChip=arr.count===0?'<span class="badge badge-success">Lunas</span>':`<span class="badge badge-danger">Nunggak ${arr.count}bln</span>`;
+    const bayarChip=arr.count===0?'<span class="badge badge-success">Lunas</span>':`<span class="badge badge-danger">Nunggak ${arr.count} ${arr.unit}</span>`;
 
     // berkas badges
     let berkasHtml='<span style="font-size:11px;color:var(--text3);">—</span>';
@@ -1016,7 +1034,7 @@ function renderTenants(){
     }
 
     const arr=getArrears(t);
-    const bayarChip=arr.count===0?'<span class="badge badge-success">Lunas</span>':`<span class="badge badge-danger">Nunggak ${arr.count}bln</span>`;
+    const bayarChip=arr.count===0?'<span class="badge badge-success">Lunas</span>':`<span class="badge badge-danger">Nunggak ${arr.count} ${arr.unit}</span>`;
 
     return `<div class="tcard ${ug!=='ok'?ug:''}" onclick="openTenantModal(${t.id})">
       <div class="tcard-top">${avatar}
@@ -1228,7 +1246,7 @@ function openTenantModal(id){
     document.getElementById('f-name').value=t.nama||'';
     document.getElementById('f-wa').value=t.wa||'';
     document.getElementById('f-ktp-no').value=t.no_ktp||'';
-    setRateForm(t.tarif||0);
+    setRateForm(t.tarif||0,t.siklus_bayar||'bulanan');
     document.getElementById('f-start').value=t.tanggal_masuk||'';
     setDurForm(t.durasi_bulan||0);    document.getElementById('f-note').value=t.catatan||'';
     if(t.foto_url) document.getElementById('photo-preview').innerHTML=`<img src="${t.foto_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
@@ -1248,6 +1266,7 @@ async function saveTenant(){
   const noKtp=document.getElementById('f-ktp-no').value.trim();
   const rumah=document.getElementById('f-room').value;
   const tarif=getRatePerBulan();   // always stored as per-bulan
+  const siklusBayar=document.getElementById('f-rate-unit').value==='tahun'?'tahunan':'bulanan';
   const start=document.getElementById('f-start').value;
   const dur=getDurInMonths();       // always stored as months
   const note=document.getElementById('f-note').value.trim();
@@ -1262,7 +1281,7 @@ async function saveTenant(){
   // berkas: save all docs (new + existing) — data is already base64
   const berkasToSave=docs.map(({type,filename,data,id})=>({type,filename,data,id}));
 
-  const payload={nama,wa,no_ktp:noKtp,rumah,tarif,tanggal_masuk:start,durasi_bulan:dur,catatan:note,foto_url,berkas:berkasToSave};
+  const payload={nama,wa,no_ktp:noKtp,rumah,tarif,siklus_bayar:siklusBayar,tanggal_masuk:start,durasi_bulan:dur,catatan:note,foto_url,berkas:berkasToSave};
 
   let error;
   if(currentTenantId){
@@ -1379,6 +1398,7 @@ CREATE TABLE IF NOT EXISTS pengontrak (
   no_ktp         TEXT,
   rumah          TEXT,
   tarif          NUMERIC DEFAULT 0,
+  siklus_bayar   TEXT DEFAULT 'bulanan',  -- 'bulanan' atau 'tahunan'
   tanggal_masuk  DATE NOT NULL,
   durasi_bulan   INTEGER NOT NULL,
   catatan        TEXT,
@@ -1387,11 +1407,12 @@ CREATE TABLE IF NOT EXISTS pengontrak (
   created_at     TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Tabel pembayaran (riwayat lunas per bulan per pengontrak)
+-- Tabel pembayaran (riwayat lunas per periode per pengontrak;
+-- satu baris = satu bulan (siklus bulanan) atau satu tahun (siklus tahunan))
 CREATE TABLE IF NOT EXISTS pembayaran (
   id             BIGSERIAL PRIMARY KEY,
   pengontrak_id  BIGINT NOT NULL REFERENCES pengontrak(id) ON DELETE CASCADE,
-  bulan          DATE NOT NULL,           -- tanggal 1 di bulan terkait, mis. 2026-09-01
+  bulan          DATE NOT NULL,           -- tanggal awal periode, mis. 2026-09-01
   jumlah         NUMERIC DEFAULT 0,
   tanggal_bayar  DATE,
   catatan        TEXT,
@@ -1411,6 +1432,7 @@ CREATE POLICY "akses auth" ON pengontrak FOR ALL USING (auth.role()='authenticat
 ALTER TABLE pengontrak
   ADD COLUMN IF NOT EXISTS no_ktp  TEXT,
   ADD COLUMN IF NOT EXISTS foto_url TEXT,
+  ADD COLUMN IF NOT EXISTS siklus_bayar TEXT DEFAULT 'bulanan',
   ADD COLUMN IF NOT EXISTS berkas  JSONB DEFAULT '[]'::jsonb;
 
 ══════════════════════════════════════════════════
