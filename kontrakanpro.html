@@ -497,6 +497,13 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
       </div>
       <div class="form-group"><label class="form-label">Catatan</label><input class="form-input" id="f-note" type="text" placeholder="Keterangan tambahan..."></div>
 
+      <!-- RIWAYAT PEMBAYARAN -->
+      <div class="section-divider">Riwayat Pembayaran</div>
+      <div id="payment-section">
+        <div id="payment-empty-new" style="font-size:11px;color:var(--text3);padding:8px 0;">Simpan pengontrak terlebih dahulu untuk mulai mencatat pembayaran bulanan.</div>
+        <div class="doc-list" id="payment-list"></div>
+      </div>
+
       <!-- BERKAS -->
       <div class="section-divider">Berkas / Dokumen</div>
       <div class="doc-section">
@@ -714,6 +721,56 @@ function getArrears(t){
   const paid=getPaidKeys(t.id);
   const unpaid=due.filter(m=>!paid.has(m.key));
   return{count:unpaid.length,amount:unpaid.length*Number(t.tarif||0),months:unpaid};
+}
+
+// Render daftar bulan jatuh tempo untuk pengontrak yang sedang dibuka di modal,
+// dengan tombol untuk menandai lunas / batal lunas.
+function renderPaymentList(){
+  const wrap=document.getElementById('payment-list');
+  const emptyNew=document.getElementById('payment-empty-new');
+  if(!currentTenantId){
+    wrap.innerHTML='';
+    emptyNew.style.display='block';
+    return;
+  }
+  emptyNew.style.display='none';
+  const t=tenants.find(x=>x.id===currentTenantId);
+  if(!t){wrap.innerHTML='';return;}
+  const due=getDueMonths(t).slice().reverse(); // terbaru di atas
+  const paidSet=getPaidKeys(t.id);
+  if(!due.length){wrap.innerHTML='<div class="doc-empty">Belum ada bulan yang jatuh tempo</div>';return;}
+  wrap.innerHTML=due.map(m=>{
+    const isPaid=paidSet.has(m.key);
+    return `<div class="doc-item">
+      <span class="doc-item-icon">${isPaid?'✅':'🕓'}</span>
+      <div class="doc-item-info">
+        <div class="doc-item-name">${m.label}</div>
+        <div class="doc-item-meta">${fmtRpExact(t.tarif||0)}${isPaid?' · Lunas':' · Belum dibayar'}</div>
+      </div>
+      <div class="doc-item-actions">
+        <button class="${isPaid?'doc-rm-btn':'doc-dl-btn'}" onclick="togglePayment('${m.key}',${Number(t.tarif||0)})">${isPaid?'Batalkan':'Tandai Lunas'}</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function togglePayment(monthKey,tarifAmount){
+  if(!currentTenantId)return;
+  const existing=payments.find(p=>p.pengontrak_id===currentTenantId&&String(p.bulan).slice(0,7)===monthKey);
+  if(existing){
+    const {error}=await sb.from('pembayaran').delete().eq('id',existing.id);
+    if(error){toast('Gagal: '+error.message,true);return;}
+    payments=payments.filter(p=>p.id!==existing.id);
+    toast('Ditandai belum bayar');
+  } else {
+    const payload={pengontrak_id:currentTenantId,bulan:monthKey+'-01',jumlah:tarifAmount,tanggal_bayar:new Date().toISOString().slice(0,10)};
+    const {data,error}=await sb.from('pembayaran').insert([payload]).select();
+    if(error){toast('Gagal: '+error.message,true);return;}
+    if(data&&data[0]) payments.push(data[0]);
+    toast('Ditandai lunas');
+  }
+  renderPaymentList();
+  renderDaftarSewa();renderTenants();renderFinance();renderDashboard();
 }
 
 // DOC TYPE META
@@ -1164,6 +1221,7 @@ function openTenantModal(id){
   document.getElementById('dur-hint').textContent='';
   populateRoomSelect(isEdit?(tenants.find(x=>x.id===id)||{}).rumah||'':'');
   renderDocList();
+  renderPaymentList();
 
   if(isEdit){
     const t=tenants.find(x=>x.id===id); if(!t)return;
@@ -1328,6 +1386,20 @@ CREATE TABLE IF NOT EXISTS pengontrak (
   berkas         JSONB DEFAULT '[]'::jsonb,
   created_at     TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Tabel pembayaran (riwayat lunas per bulan per pengontrak)
+CREATE TABLE IF NOT EXISTS pembayaran (
+  id             BIGSERIAL PRIMARY KEY,
+  pengontrak_id  BIGINT NOT NULL REFERENCES pengontrak(id) ON DELETE CASCADE,
+  bulan          DATE NOT NULL,           -- tanggal 1 di bulan terkait, mis. 2026-09-01
+  jumlah         NUMERIC DEFAULT 0,
+  tanggal_bayar  DATE,
+  catatan        TEXT,
+  created_at     TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(pengontrak_id, bulan)
+);
+ALTER TABLE pembayaran ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "akses auth" ON pembayaran FOR ALL USING (auth.role()='authenticated');
 
 -- RLS
 ALTER TABLE rumah ENABLE ROW LEVEL SECURITY;
