@@ -512,15 +512,12 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
       <div class="form-row">
         <div class="form-group"><label class="form-label">Tanggal masuk *</label><input class="form-input" id="f-start" type="date"></div>
         <div class="form-group">
-          <label class="form-label">Lama kontrak *</label>
-          <div style="display:flex;gap:6px;">
-            <input class="form-input" id="f-dur" type="number" placeholder="1" min="1" style="flex:1;" oninput="updateDurHint()">
-            <select class="form-input" id="f-dur-unit" onchange="updateDurHint()" style="width:auto;padding:9px 24px 9px 9px;flex-shrink:0;">
-              <option value="bulan">Bulan</option>
-              <option value="tahun">Tahun</option>
-            </select>
+          <label class="form-label">Lama kontrak (tahun) *</label>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input class="form-input" id="f-dur" type="number" placeholder="1" min="1" step="1" style="flex:1;" oninput="updateDurHint()">
+            <span style="font-size:13px;color:var(--text2);flex-shrink:0;padding-right:4px;">tahun</span>
           </div>
-          <div id="dur-hint" style="font-size:11px;color:var(--text3);margin-top:3px;"></div>
+          <div id="dur-hint" style="font-size:11px;color:var(--text3);margin-top:3px;">Minimal kontrak 1 tahun, tidak tersedia per bulan.</div>
         </div>
       </div>
       <div class="form-group"><label class="form-label">Catatan</label><input class="form-input" id="f-note" type="text" placeholder="Keterangan tambahan..."></div>
@@ -851,21 +848,14 @@ function updateRateHint(){
 }
 function updateDurHint(){
   const val=parseInt(document.getElementById('f-dur').value)||0;
-  const unit=document.getElementById('f-dur-unit').value;
   const hint=document.getElementById('dur-hint');
-  if(!val){hint.textContent='';return;}
-  if(unit==='tahun'){
-    hint.textContent=`= ${val*12} bulan`;
-  } else {
-    const y=Math.floor(val/12), m=val%12;
-    hint.textContent=y>0?(m>0?`= ${y} tahun ${m} bulan`:`= ${y} tahun`):'';
-  }
+  if(!val){hint.textContent='Minimal kontrak 1 tahun, tidak tersedia per bulan.';return;}
+  hint.textContent=`= ${val*12} bulan`;
 }
-// Get duration in MONTHS from form
+// Get duration in MONTHS from form (selalu dihitung dari input tahun)
 function getDurInMonths(){
   const val=parseInt(document.getElementById('f-dur').value)||0;
-  const unit=document.getElementById('f-dur-unit').value;
-  return unit==='tahun'?val*12:val;
+  return val*12;
 }
 // Get rate PER MONTH from form
 function getRatePerBulan(){
@@ -873,16 +863,11 @@ function getRatePerBulan(){
   const unit=document.getElementById('f-rate-unit').value;
   return unit==='tahun'?val/12:val;
 }
-// Set form fields from stored (bulan-based) values
+// Set form fields dari nilai tersimpan (durasi_bulan) — selalu ditampilkan
+// dalam tahun (dibulatkan ke atas kalau data lama tidak pas kelipatan 12).
 function setDurForm(bulan){
-  if(!bulan){document.getElementById('f-dur').value='';document.getElementById('f-dur-unit').value='bulan';return;}
-  if(bulan%12===0&&bulan>=12){
-    document.getElementById('f-dur').value=bulan/12;
-    document.getElementById('f-dur-unit').value='tahun';
-  } else {
-    document.getElementById('f-dur').value=bulan;
-    document.getElementById('f-dur-unit').value='bulan';
-  }
+  if(!bulan){document.getElementById('f-dur').value='';updateDurHint();return;}
+  document.getElementById('f-dur').value=Math.max(1,Math.ceil(bulan/12));
   updateDurHint();
 }
 function setRateForm(perBulan,siklus){
@@ -1320,9 +1305,8 @@ function openTenantModal(id){
   document.getElementById('f-rate').value='';
   document.getElementById('f-rate-unit').value='bulan';
   document.getElementById('f-dur').value='';
-  document.getElementById('f-dur-unit').value='bulan';
   document.getElementById('rate-hint').textContent='';
-  document.getElementById('dur-hint').textContent='';
+  document.getElementById('dur-hint').textContent='Minimal kontrak 1 tahun, tidak tersedia per bulan.';
   populateRoomSelect(isEdit?(tenants.find(x=>x.id===id)||{}).rumah||'':'');
   renderDocList();
   renderPaymentList();
@@ -1357,6 +1341,7 @@ async function saveTenant(){
   const dur=getDurInMonths();       // always stored as months
   const note=document.getElementById('f-note').value.trim();
   if(!nama||!wa||!rumah||!start||!dur){toast('Isi semua field wajib (*)',true);return;}
+  if(dur<12){toast('Lama kontrak minimal 1 tahun (12 bulan)',true);return;}
   btn.disabled=true;btn.textContent='Menyimpan...';
 
   // foto: use new photoData or keep existing
