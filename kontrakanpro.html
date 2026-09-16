@@ -498,13 +498,10 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Biaya kontrak (Rp)</label>
-          <div style="display:flex;gap:6px;">
-            <input class="form-input" id="f-rate" type="number" placeholder="1500000" min="0" style="flex:1;" oninput="updateRateHint()">
-            <select class="form-input" id="f-rate-unit" onchange="updateRateHint()" style="width:auto;padding:9px 24px 9px 9px;flex-shrink:0;">
-              <option value="bulan">/ Bulan</option>
-              <option value="tahun">/ Tahun</option>
-            </select>
+          <label class="form-label">Biaya kontrak / tahun (Rp)</label>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input class="form-input" id="f-rate" type="number" placeholder="15000000" min="0" style="flex:1;" oninput="updateRateHint()">
+            <span style="font-size:13px;color:var(--text2);flex-shrink:0;padding-right:4px;">/ tahun</span>
           </div>
           <div id="rate-hint" style="font-size:11px;color:var(--text3);margin-top:3px;"></div>
         </div>
@@ -715,12 +712,11 @@ function fmtRpExact(n){
   n=Math.round(Number(n)||0);
   return 'Rp '+n.toLocaleString('id-ID');
 }
-// Menampilkan biaya kontrak sesuai satuan ASLI yang diinput pemilik
-// (kalau dipilih "/Tahun" saat input, tetap tampil sebagai nilai tahunan,
-// bukan hasil bagi 12 — supaya "22 juta/tahun" ya tertulis 22 juta, bukan ~1,8jt).
+// Menampilkan biaya kontrak — sekarang semua kontrak per tahun (opsi per
+// bulan sudah dihapus), jadi selalu tampil sebagai nilai tahunan utuh
+// (mis. "22 juta/tahun" ya tertulis 22 juta, bukan hasil bagi 12).
 function fmtTarifDisplay(t){
-  if(t.siklus_bayar==='tahunan') return fmtRpExact(Number(t.tarif||0)*12)+'/thn';
-  return fmtRpExact(Number(t.tarif||0))+'/bln';
+  return fmtRpExact(Number(t.tarif||0)*12)+'/thn';
 }
 function fmtDur(bulan){
   if(!bulan)return '—';
@@ -737,29 +733,23 @@ const urgency=t=>{const d=daysLeft(t);return d<=7?'urgent':d<=30?'warning':'ok';
 
 // ── PEMBAYARAN / TUNGGAKAN ──────────────────
 // Daftar periode yang sudah jatuh tempo untuk sebuah pengontrak, dari tanggal
-// masuk sampai sekarang (tidak melewati akhir kontrak). Jika siklus_bayar
-// pengontrak = 'tahunan', satu periode = 12 bulan (bayar setahun sekali),
-// kalau tidak, satu periode = 1 bulan.
+// masuk sampai sekarang (tidak melewati akhir kontrak). Sekarang semua
+// kontrak memakai siklus tahunan (opsi per bulan sudah dihapus), jadi satu
+// periode = 12 bulan (bayar setahun sekali).
 function getDuePeriods(t){
   const start=new Date(t.tanggal_masuk);
   const end=addMonths(start,t.durasi_bulan);
   const now=new Date();
   const lastDue=now<end?now:end;
-  const isYearly=t.siklus_bayar==='tahunan';
-  const step=isYearly?12:1;
+  const step=12;
   const periods=[];
   let cursor=new Date(start.getFullYear(),start.getMonth(),1);
   while(cursor<=lastDue){
     const periodEnd=addMonths(cursor,step);
     const key=cursor.getFullYear()+'-'+String(cursor.getMonth()+1).padStart(2,'0');
-    let label;
-    if(isYearly){
-      const lastMonthOfPeriod=addMonths(cursor,step-1);
-      label=cursor.toLocaleString('id-ID',{month:'short',year:'numeric'})+' – '+lastMonthOfPeriod.toLocaleString('id-ID',{month:'short',year:'numeric'});
-    } else {
-      label=cursor.toLocaleString('id-ID',{month:'long',year:'numeric'});
-    }
-    const amount=isYearly?Number(t.tarif||0)*step:Number(t.tarif||0);
+    const lastMonthOfPeriod=addMonths(cursor,step-1);
+    const label=cursor.toLocaleString('id-ID',{month:'short',year:'numeric'})+' – '+lastMonthOfPeriod.toLocaleString('id-ID',{month:'short',year:'numeric'});
+    const amount=Number(t.tarif||0)*step;
     periods.push({key,date:new Date(cursor),label,amount});
     cursor=periodEnd;
   }
@@ -773,7 +763,7 @@ function getArrears(t){
   const paid=getPaidKeys(t.id);
   const unpaid=due.filter(m=>!paid.has(m.key));
   const amount=unpaid.reduce((a,m)=>a+m.amount,0);
-  return{count:unpaid.length,amount,unit:t.siklus_bayar==='tahunan'?'thn':'bln',months:unpaid};
+  return{count:unpaid.length,amount,unit:'thn',months:unpaid};
 }
 
 // Render daftar periode jatuh tempo untuk pengontrak yang sedang dibuka di
@@ -837,14 +827,9 @@ const DOC_META={
 // ── RATE / DUR HINT ────────────────────────
 function updateRateHint(){
   const val=parseFloat(document.getElementById('f-rate').value)||0;
-  const unit=document.getElementById('f-rate-unit').value;
   const hint=document.getElementById('rate-hint');
   if(!val){hint.textContent='';return;}
-  if(unit==='tahun'){
-    hint.textContent=`= ${fmtRpExact(val/12)} per bulan`;
-  } else {
-    hint.textContent=`= ${fmtRpExact(val*12)} per tahun`;
-  }
+  hint.textContent=`= ${fmtRpExact(val/12)} per bulan (setara)`;
 }
 function updateDurHint(){
   const val=parseInt(document.getElementById('f-dur').value)||0;
@@ -857,11 +842,10 @@ function getDurInMonths(){
   const val=parseInt(document.getElementById('f-dur').value)||0;
   return val*12;
 }
-// Get rate PER MONTH from form
+// Get rate PER MONTH (nilai internal) dari input per tahun di form
 function getRatePerBulan(){
   const val=parseFloat(document.getElementById('f-rate').value)||0;
-  const unit=document.getElementById('f-rate-unit').value;
-  return unit==='tahun'?val/12:val;
+  return val/12;
 }
 // Set form fields dari nilai tersimpan (durasi_bulan) — selalu ditampilkan
 // dalam tahun (dibulatkan ke atas kalau data lama tidak pas kelipatan 12).
@@ -870,15 +854,10 @@ function setDurForm(bulan){
   document.getElementById('f-dur').value=Math.max(1,Math.ceil(bulan/12));
   updateDurHint();
 }
-function setRateForm(perBulan,siklus){
-  if(!perBulan){document.getElementById('f-rate').value='';document.getElementById('f-rate-unit').value='bulan';updateRateHint();return;}
-  if(siklus==='tahunan'){
-    document.getElementById('f-rate').value=Math.round(perBulan*12);
-    document.getElementById('f-rate-unit').value='tahun';
-  } else {
-    document.getElementById('f-rate').value=Math.round(perBulan);
-    document.getElementById('f-rate-unit').value='bulan';
-  }
+// Set form biaya kontrak — nilai tersimpan selalu per bulan secara internal,
+// tapi ditampilkan sebagai nilai per tahun karena opsi per bulan sudah dihapus.
+function setRateForm(perBulan){
+  document.getElementById('f-rate').value=perBulan?Math.round(perBulan*12):'';
   updateRateHint();
 }
 
@@ -1176,7 +1155,7 @@ function renderRiwayat(){
     const masuk=r.tanggal_masuk?new Date(r.tanggal_masuk).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}):'—';
     const keluar=r.tanggal_keluar?new Date(r.tanggal_keluar).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}):'—';
     const durBulan=(r.tanggal_masuk&&r.tanggal_keluar)?Math.max(0,Math.round(daysDiff(new Date(r.tanggal_masuk),new Date(r.tanggal_keluar))/30)):0;
-    const biaya=r.siklus_bayar==='tahunan'?fmtRpExact(Number(r.tarif||0)*12)+'/thn':fmtRpExact(Number(r.tarif||0))+'/bln';
+    const biaya=fmtRpExact(Number(r.tarif||0)*12)+'/thn';
     return `<tr>
       <td style="font-weight:600;">${r.nama||'—'}</td>
       <td>${r.rumah||'—'}</td>
@@ -1303,7 +1282,6 @@ function openTenantModal(id){
   document.getElementById('photo-preview').innerHTML='<span style="font-size:11px;color:var(--text3);">Foto</span>';
   ['f-name','f-wa','f-ktp-no','f-note'].forEach(x=>document.getElementById(x).value='');
   document.getElementById('f-rate').value='';
-  document.getElementById('f-rate-unit').value='bulan';
   document.getElementById('f-dur').value='';
   document.getElementById('rate-hint').textContent='';
   document.getElementById('dur-hint').textContent='Minimal kontrak 1 tahun, tidak tersedia per bulan.';
@@ -1316,7 +1294,7 @@ function openTenantModal(id){
     document.getElementById('f-name').value=t.nama||'';
     document.getElementById('f-wa').value=t.wa||'';
     document.getElementById('f-ktp-no').value=t.no_ktp||'';
-    setRateForm(t.tarif||0,t.siklus_bayar||'bulanan');
+    setRateForm(t.tarif||0);
     document.getElementById('f-start').value=t.tanggal_masuk||'';
     setDurForm(t.durasi_bulan||0);    document.getElementById('f-note').value=t.catatan||'';
     if(t.foto_url) document.getElementById('photo-preview').innerHTML=`<img src="${t.foto_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
@@ -1336,7 +1314,7 @@ async function saveTenant(){
   const noKtp=document.getElementById('f-ktp-no').value.trim();
   const rumah=document.getElementById('f-room').value;
   const tarif=getRatePerBulan();   // always stored as per-bulan
-  const siklusBayar=document.getElementById('f-rate-unit').value==='tahun'?'tahunan':'bulanan';
+  const siklusBayar='tahunan'; // opsi per bulan sudah dihapus, semua kontrak sekarang tahunan
   const start=document.getElementById('f-start').value;
   const dur=getDurInMonths();       // always stored as months
   const note=document.getElementById('f-note').value.trim();
@@ -1388,7 +1366,7 @@ async function archiveTenant(){
 
   const totalDiterima=payments.filter(p=>p.pengontrak_id===currentTenantId).reduce((a,p)=>a+Number(p.jumlah||0),0);
   const payload={
-    nama:t.nama, wa:t.wa, rumah:t.rumah, tarif:t.tarif, siklus_bayar:t.siklus_bayar||'bulanan',
+    nama:t.nama, wa:t.wa, rumah:t.rumah, tarif:t.tarif, siklus_bayar:t.siklus_bayar||'tahunan',
     tanggal_masuk:t.tanggal_masuk, tanggal_keluar:new Date().toISOString().slice(0,10),
     total_diterima:totalDiterima, catatan:t.catatan||''
   };
@@ -1496,7 +1474,7 @@ CREATE TABLE IF NOT EXISTS pengontrak (
   no_ktp         TEXT,
   rumah          TEXT,
   tarif          NUMERIC DEFAULT 0,
-  siklus_bayar   TEXT DEFAULT 'bulanan',  -- 'bulanan' atau 'tahunan'
+  siklus_bayar   TEXT DEFAULT 'tahunan',  -- semua kontrak sekarang tahunan (opsi bulanan sudah dihapus dari aplikasi)
   tanggal_masuk  DATE NOT NULL,
   durasi_bulan   INTEGER NOT NULL,
   catatan        TEXT,
@@ -1506,11 +1484,11 @@ CREATE TABLE IF NOT EXISTS pengontrak (
 );
 
 -- Tabel pembayaran (riwayat lunas per periode per pengontrak;
--- satu baris = satu bulan (siklus bulanan) atau satu tahun (siklus tahunan))
+-- satu baris = satu tahun kontrak)
 CREATE TABLE IF NOT EXISTS pembayaran (
   id             BIGSERIAL PRIMARY KEY,
   pengontrak_id  BIGINT NOT NULL REFERENCES pengontrak(id) ON DELETE CASCADE,
-  bulan          DATE NOT NULL,           -- tanggal awal periode, mis. 2026-09-01
+  bulan          DATE NOT NULL,           -- tanggal awal periode (tahun), mis. 2026-09-01
   jumlah         NUMERIC DEFAULT 0,
   tanggal_bayar  DATE,
   catatan        TEXT,
@@ -1530,8 +1508,13 @@ CREATE POLICY "akses auth" ON pengontrak FOR ALL USING (auth.role()='authenticat
 ALTER TABLE pengontrak
   ADD COLUMN IF NOT EXISTS no_ktp  TEXT,
   ADD COLUMN IF NOT EXISTS foto_url TEXT,
-  ADD COLUMN IF NOT EXISTS siklus_bayar TEXT DEFAULT 'bulanan',
+  ADD COLUMN IF NOT EXISTS siklus_bayar TEXT DEFAULT 'tahunan',
   ADD COLUMN IF NOT EXISTS berkas  JSONB DEFAULT '[]'::jsonb;
+
+-- Opsional: kalau sebelumnya sempat ada data dengan siklus_bayar='bulanan'
+-- (dibuat sebelum opsi per bulan dihapus), samakan semua jadi tahunan:
+UPDATE pengontrak SET siklus_bayar='tahunan' WHERE siklus_bayar IS DISTINCT FROM 'tahunan';
+ALTER TABLE pengontrak ALTER COLUMN siklus_bayar SET DEFAULT 'tahunan';
 
 -- Tabel riwayat pengontrak (arsip pengontrak yang sudah pindah/keluar,
 -- beserta total pendapatan yang sudah diterima darinya)
@@ -1541,7 +1524,7 @@ CREATE TABLE IF NOT EXISTS riwayat_pengontrak (
   wa             TEXT,
   rumah          TEXT,
   tarif          NUMERIC DEFAULT 0,
-  siklus_bayar   TEXT DEFAULT 'bulanan',
+  siklus_bayar   TEXT DEFAULT 'tahunan',
   tanggal_masuk  DATE,
   tanggal_keluar DATE,
   total_diterima NUMERIC DEFAULT 0,
