@@ -379,6 +379,7 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
   <div class="page" id="page-keuangan">
     <div class="metric-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:13px;">
       <div class="metric-card"><div class="metric-label">Penghasilan Bulanan</div><div class="metric-value" id="fin-monthly" style="color:var(--teal-mid)">—</div><div class="metric-sub">dari kontrak aktif saat ini</div></div>
+      <div class="metric-card"><div class="metric-label">Total Biaya Kontrak</div><div class="metric-value" id="fin-contract-total" style="color:var(--teal-mid)">—</div><div class="metric-sub" id="fin-contract-sub">nilai penuh seluruh kontrak aktif</div></div>
       <div class="metric-card"><div class="metric-label">Total Proyeksi</div><div class="metric-value" id="fin-total" style="color:var(--teal-mid)">—</div><div class="metric-sub">estimasi dari sisa kontrak</div></div>
       <div class="metric-card"><div class="metric-label">Sudah Diterima</div><div class="metric-value" id="fin-received" style="color:var(--teal-mid)">—</div><div class="metric-sub">seluruh riwayat pembayaran</div></div>
       <div class="metric-card"><div class="metric-label">Total Tunggakan</div><div class="metric-value" id="fin-arrears" style="color:var(--red)">—</div><div class="metric-sub" id="fin-arrears-sub">tidak ada tunggakan</div></div>
@@ -1097,6 +1098,7 @@ function renderRumah(){
 // ── KEUANGAN ───────────────────────────────
 function renderFinance(){
   const monthly=tenants.reduce((a,t)=>a+Number(t.tarif||0),0);
+  const contractTotal=tenants.reduce((a,t)=>a+Number(t.tarif||0)*12,0); // nilai penuh semua kontrak aktif (per tahun), tidak diprorata sisa hari
   const proj=tenants.reduce((a,t)=>a+(Number(t.tarif||0)*Math.max(0,daysLeft(t)/30)),0);
   const avg=tenants.length?monthly/tenants.length:0;
   const risk=tenants.filter(t=>daysLeft(t)<=30).reduce((a,t)=>a+Number(t.tarif||0),0);
@@ -1106,6 +1108,8 @@ function renderFinance(){
   const totalArrears=arrearsPerTenant.reduce((a,x)=>a+x.arr.amount,0);
 
   document.getElementById('fin-monthly').textContent=fmtRpExact(monthly);
+  document.getElementById('fin-contract-total').textContent=fmtRpExact(contractTotal);
+  document.getElementById('fin-contract-sub').textContent=`${tenants.length} kontrak aktif`;
   document.getElementById('fin-total').textContent=fmtRpExact(proj);
   document.getElementById('fin-received').textContent=fmtRpExact(received);
   document.getElementById('fin-arrears').textContent=fmtRpExact(totalArrears);
