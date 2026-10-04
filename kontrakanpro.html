@@ -183,7 +183,7 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
 .modal-close{cursor:pointer;font-size:20px;color:var(--text2);border:none;background:none;line-height:1;padding:2px 5px;border-radius:4px;}
 .modal-close:hover{background:var(--bg2);}
 .modal-body{padding:17px;}
-.modal-foot{padding:12px 17px;border-top:0.5px solid var(--border);display:flex;gap:7px;justify-content:flex-end;align-items:center;}
+.modal-foot{padding:12px 17px;border-top:0.5px solid var(--border);display:flex;gap:7px;justify-content:flex-end;align-items:center;flex-wrap:wrap;}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .btn-cancel{padding:7px 14px;font-size:13px;border-radius:var(--radius);border:0.5px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;font-family:var(--font);}
 .btn-save{padding:7px 14px;font-size:13px;border-radius:var(--radius);border:none;background:var(--teal-mid);color:#fff;font-weight:700;cursor:pointer;font-family:var(--font);}
@@ -212,9 +212,33 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
 .doc-item-actions{display:flex;gap:5px;flex-shrink:0;}
 .doc-dl-btn{font-size:10px;padding:3px 8px;border-radius:20px;background:var(--blue-light);color:var(--blue);border:none;cursor:pointer;font-weight:600;font-family:var(--font);}
 .doc-rm-btn{font-size:10px;padding:3px 8px;border-radius:20px;background:var(--red-light);color:var(--red);border:none;cursor:pointer;font-weight:600;font-family:var(--font);}
+.doc-ok-btn{font-size:10px;padding:3px 8px;border-radius:20px;background:var(--green-light);color:var(--green);border:none;cursor:pointer;font-weight:600;font-family:var(--font);}
 .doc-empty{font-size:12px;color:var(--text3);padding:10px;text-align:center;}
 .doc-badge{display:inline-flex;align-items:center;gap:3px;font-size:10px;padding:2px 6px;border-radius:20px;font-weight:600;flex-shrink:0;}
 .wa-btn{display:inline-flex;align-items:center;gap:3px;font-size:11px;padding:3px 8px;border-radius:20px;background:#25D366;color:#fff;text-decoration:none;font-weight:700;}
+
+/* ── PEMBAYARAN (cicilan) ── */
+.pay-item{flex-wrap:wrap;}
+.pay-row{display:flex;gap:6px;align-items:center;width:100%;margin-top:4px;}
+.pay-in{flex:1;min-width:0;padding:5px 9px;font-size:12px;}
+.pay-bar{width:100%;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;}
+.pay-bar>div{height:100%;background:var(--teal-mid);}
+.notice{font-size:12px;line-height:1.5;padding:9px 11px;border-radius:var(--radius);margin-top:10px;}
+.notice.warn{background:var(--amber-light);color:var(--amber);}
+.notice.ok{background:var(--green-light);color:var(--green);}
+
+
+/* ── KEUANGAN: penjelasan ── */
+.metric-desc{font-size:11px;color:var(--text2);margin-top:7px;line-height:1.45;}
+.fin-group-title{font-size:12px;font-weight:700;color:var(--text);margin:4px 0 2px;}
+.fin-group-sub{font-size:11px;color:var(--text3);margin-bottom:9px;}
+.fin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:16px;}
+.fin-help summary{cursor:pointer;font-size:13px;font-weight:600;}
+.fin-help .help-body{font-size:12px;line-height:1.6;color:var(--text2);margin-top:10px;}
+.fin-help .help-body p{margin-bottom:8px;}
+.fin-help .help-body b{color:var(--text);}
+.fin-example{background:var(--bg2);border-radius:var(--radius);padding:10px 12px;margin-top:6px;}
+@media(max-width:640px){.fin-grid{grid-template-columns:1fr;}}
 
 /* ── MISC ── */
 .empty-state{text-align:center;padding:34px 16px;color:var(--text3);font-size:13px;}
@@ -377,22 +401,59 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
 
   <!-- KEUANGAN -->
   <div class="page" id="page-keuangan">
-    <div class="metric-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:13px;">
-      <div class="metric-card"><div class="metric-label">Penghasilan Bulanan</div><div class="metric-value" id="fin-monthly" style="color:var(--teal-mid)">—</div><div class="metric-sub">dari kontrak aktif saat ini</div></div>
-      <div class="metric-card"><div class="metric-label">Total Biaya Kontrak</div><div class="metric-value" id="fin-contract-total" style="color:var(--teal-mid)">—</div><div class="metric-sub" id="fin-contract-sub">nilai penuh seluruh kontrak aktif</div></div>
-      <div class="metric-card"><div class="metric-label">Total Proyeksi</div><div class="metric-value" id="fin-total" style="color:var(--teal-mid)">—</div><div class="metric-sub">estimasi dari sisa kontrak</div></div>
-      <div class="metric-card"><div class="metric-label">Sudah Diterima</div><div class="metric-value" id="fin-received" style="color:var(--teal-mid)">—</div><div class="metric-sub">seluruh riwayat pembayaran</div></div>
-      <div class="metric-card"><div class="metric-label">Total Tunggakan</div><div class="metric-value" id="fin-arrears" style="color:var(--red)">—</div><div class="metric-sub" id="fin-arrears-sub">tidak ada tunggakan</div></div>
-      <div class="metric-card"><div class="metric-label">Rata-rata/Rumah</div><div class="metric-value" id="fin-avg">—</div><div class="metric-sub">per bulan</div></div>
-      <div class="metric-card"><div class="metric-label">Potensi Hilang</div><div class="metric-value" id="fin-risk" style="color:var(--red)">—</div><div class="metric-sub">kontrak segera habis (30 hr)</div></div>
+    <div class="card fin-help" style="margin-bottom:14px;">
+      <details>
+        <summary>Cara membaca halaman Keuangan (klik untuk membuka)</summary>
+        <div class="help-body">
+          <p>Halaman ini dibagi tiga bagian: <b>uang yang sudah/belum masuk</b>, <b>pendapatan dari kontrak</b>, dan <b>risiko</b>. Semua angka hanya dihitung dari <b>pengontrak yang masih aktif</b>.</p>
+          <p><b>Tunggakan</b> = tagihan yang sudah jatuh tempo tetapi belum dibayar, termasuk kekurangan bila pengontrak membayar sebagian. Ini <b>uang yang seharusnya sudah Anda terima</b>.</p>
+          <p><b>Sisa Pendapatan Kontrak</b> = perkiraan uang dari sisa waktu kontrak ke depan. Ini hanya <b>perkiraan</b>, bukan tagihan, dan tidak berkaitan dengan status bayar.</p>
+          <p><b>Pendapatan per Bulan</b> hanyalah gambaran (biaya tahunan dibagi 12). Pembayaran sebenarnya dilakukan per tahun.</p>
+          <div class="fin-example"><b>Contoh:</b> sewa Rp12.000.000/tahun, kontrak 2 tahun, baru masuk, dan sudah membayar Rp5.000.000.<br>
+          Sudah Diterima = Rp5.000.000 · Tunggakan = Rp7.000.000 (kekurangan tahun pertama) · Pendapatan per Bulan = Rp1.000.000 · Nilai Kontrak per Tahun = Rp12.000.000 · Sisa Pendapatan Kontrak ≈ Rp24.000.000 (2 tahun ke depan).</div>
+        </div>
+      </details>
     </div>
+
+    <div class="fin-group-title">1. Uang masuk dan tagihan</div>
+    <div class="fin-group-sub">Kondisi pembayaran sebenarnya saat ini.</div>
+    <div class="fin-grid">
+      <div class="metric-card"><div class="metric-label">Sudah Diterima</div><div class="metric-value" id="fin-received" style="color:var(--teal-mid)">—</div><div class="metric-sub">uang masuk yang sudah dicatat</div><div class="metric-desc">Total pembayaran yang sudah Anda catat dari pengontrak aktif (termasuk cicilan).</div></div>
+      <div class="metric-card"><div class="metric-label">Tunggakan (Belum Dibayar)</div><div class="metric-value" id="fin-arrears" style="color:var(--red)">—</div><div class="metric-sub" id="fin-arrears-sub">tidak ada tunggakan</div><div class="metric-desc">Tagihan yang sudah jatuh tempo tetapi belum dibayar, termasuk kekurangan cicilan. Ini yang perlu ditagih.</div></div>
+    </div>
+
+    <div class="fin-group-title">2. Pendapatan dari kontrak aktif</div>
+    <div class="fin-group-sub">Gambaran nilai sewa. Bukan berarti uangnya sudah diterima.</div>
+    <div class="fin-grid">
+      <div class="metric-card"><div class="metric-label">Pendapatan per Bulan</div><div class="metric-value" id="fin-monthly" style="color:var(--teal-mid)">—</div><div class="metric-sub">setara per bulan</div><div class="metric-desc">Biaya sewa tahunan semua pengontrak aktif dibagi 12. Hanya gambaran, karena pembayaran dilakukan per tahun.</div></div>
+      <div class="metric-card"><div class="metric-label">Nilai Kontrak per Tahun</div><div class="metric-value" id="fin-contract-total" style="color:var(--teal-mid)">—</div><div class="metric-sub" id="fin-contract-sub">kontrak aktif</div><div class="metric-desc">Jumlah biaya sewa untuk satu tahun dari semua kontrak aktif.</div></div>
+      <div class="metric-card"><div class="metric-label">Sisa Pendapatan Kontrak</div><div class="metric-value" id="fin-total" style="color:var(--teal-mid)">—</div><div class="metric-sub">perkiraan dari sisa waktu kontrak</div><div class="metric-desc">Perkiraan uang sewa dari sisa waktu kontrak ke depan (sisa hari × tarif per bulan). Perkiraan saja, tidak memperhitungkan status bayar.</div></div>
+      <div class="metric-card"><div class="metric-label">Rata-rata per Rumah</div><div class="metric-value" id="fin-avg">—</div><div class="metric-sub">per bulan</div><div class="metric-desc">Pendapatan per bulan dibagi jumlah rumah yang terisi.</div></div>
+    </div>
+
+    <div class="fin-group-title">3. Perlu diperhatikan</div>
+    <div class="fin-group-sub">Risiko pendapatan dalam waktu dekat.</div>
+    <div class="fin-grid">
+      <div class="metric-card"><div class="metric-label">Potensi Kehilangan Pendapatan</div><div class="metric-value" id="fin-risk" style="color:var(--red)">—</div><div class="metric-sub">kontrak habis ≤ 30 hari</div><div class="metric-desc">Pendapatan per bulan yang akan hilang bila kontrak yang segera habis tidak diperpanjang.</div></div>
+    </div>
+
     <div class="card">
       <div class="card-header"><div class="card-title">Rincian per pengontrak</div></div>
       <div style="overflow-x:auto;">
         <table class="ftable">
-          <thead><tr><th>Nama</th><th>Rumah</th><th>Biaya Kontrak</th><th>Sisa</th><th>Proyeksi</th><th>Tunggakan</th><th>Status</th></tr></thead>
+          <thead><tr>
+            <th>Nama</th><th>Rumah</th>
+            <th title="Biaya sewa untuk 1 tahun">Biaya Kontrak</th>
+            <th title="Sisa waktu sampai kontrak berakhir">Sisa Waktu</th>
+            <th title="Perkiraan uang sewa dari sisa waktu kontrak (bukan tagihan)">Sisa Pendapatan</th>
+            <th title="Tagihan jatuh tempo yang belum dibayar">Tunggakan</th>
+            <th title="Status masa kontrak">Status Kontrak</th>
+          </tr></thead>
           <tbody id="fin-tbody"><tr><td colspan="7"><div class="loading-spinner"><div class="spinner"></div></div></td></tr></tbody>
         </table>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:10px;line-height:1.5;">
+        <b>Sisa Waktu</b>: lama kontrak yang masih tersisa. <b>Sisa Pendapatan</b>: perkiraan uang dari sisa waktu itu. <b>Tunggakan</b>: kekurangan bayar yang sudah jatuh tempo. <b>Status Kontrak</b>: Aktif / Hampir (≤ 30 hari) / Kritis (≤ 7 hari) / Habis.
       </div>
     </div>
   </div>
@@ -410,8 +471,9 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
 
   <!-- RIWAYAT -->
   <div class="page" id="page-riwayat">
-    <div class="metric-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));margin-bottom:13px;">
+    <div class="metric-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:13px;">
       <div class="metric-card"><div class="metric-label">Total Pendapatan Historis</div><div class="metric-value" id="riw-total" style="color:var(--teal-mid)">—</div><div class="metric-sub">dari pengontrak yang sudah pindah</div></div>
+      <div class="metric-card"><div class="metric-label">Tunggakan Tercatat</div><div class="metric-value" id="riw-arrears" style="color:var(--red)">—</div><div class="metric-sub">belum dilunasi saat pindah</div></div>
       <div class="metric-card"><div class="metric-label">Jumlah Riwayat</div><div class="metric-value" id="riw-count">—</div><div class="metric-sub">pengontrak tercatat</div></div>
     </div>
     <div class="card">
@@ -421,8 +483,8 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
       </div>
       <div style="overflow-x:auto;">
         <table class="ftable">
-          <thead><tr><th>Nama</th><th>Rumah</th><th>Periode Sewa</th><th>Durasi</th><th>Biaya Kontrak</th><th>Total Diterima</th></tr></thead>
-          <tbody id="riw-tbody"><tr><td colspan="6"><div class="loading-spinner"><div class="spinner"></div></div></td></tr></tbody>
+          <thead><tr><th>Nama</th><th>Rumah</th><th>Periode Sewa</th><th>Durasi</th><th>Biaya Kontrak</th><th>Total Diterima</th><th>Tunggakan</th></tr></thead>
+          <tbody id="riw-tbody"><tr><td colspan="7"><div class="loading-spinner"><div class="spinner"></div></div></td></tr></tbody>
         </table>
       </div>
     </div>
@@ -523,7 +585,8 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
       <!-- RIWAYAT PEMBAYARAN -->
       <div class="section-divider">Riwayat Pembayaran</div>
       <div id="payment-section">
-        <div id="payment-empty-new" style="font-size:11px;color:var(--text3);padding:8px 0;">Simpan pengontrak terlebih dahulu untuk mulai mencatat pembayaran bulanan.</div>
+        <div id="payment-empty-new" style="font-size:11px;color:var(--text3);padding:8px 0;">Simpan pengontrak terlebih dahulu untuk mulai mencatat pembayaran.</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;" id="payment-help">Pembayaran dapat dicatat sebagian (cicilan). Sisa tagihan dihitung otomatis.</div>
         <div class="doc-list" id="payment-list"></div>
       </div>
 
@@ -591,6 +654,21 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
   </div>
 </div>
 
+<!-- MODAL KONFIRMASI KONTRAK HABIS -->
+<div class="modal-backdrop" id="modal-expired">
+  <div class="modal" style="max-width:430px;">
+    <div class="modal-head">
+      <div class="modal-title">Kontrak Telah Berakhir</div>
+    </div>
+    <div class="modal-body" id="exp-body"></div>
+    <div class="modal-foot">
+      <button class="btn-cancel" onclick="dismissExpired()">Nanti</button>
+      <button class="btn-cancel" onclick="extendExpired()">Perpanjang / Edit</button>
+      <button class="btn-save" id="btn-confirm-exp" onclick="confirmExpired()">Pindahkan ke Riwayat</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -621,6 +699,9 @@ let docs=[];
 let currentDocType='';
 // dashboard sort
 let dsCol='nama', dsDir='asc';
+// konfirmasi kontrak habis
+let expiredId=null;
+const expiredDismissed=new Set(); // ditunda selama sesi halaman ini
 
 // ── THEME ──────────────────────────────────
 function initTheme(){
@@ -678,6 +759,7 @@ document.getElementById('login-pass').addEventListener('keydown',e=>{if(e.key===
 async function loadAll(){
   await Promise.all([loadRumah(),loadTenants(),loadPayments(),loadRiwayat()]);
   renderDashboard();renderTenants();renderRumah();renderFinance();renderNotif();renderRiwayat();
+  checkExpired(); // minta konfirmasi untuk kontrak yang sudah habis
 }
 async function loadTenants(){
   const {data,error}=await sb.from('pengontrak').select('*').order('nama');
@@ -694,6 +776,9 @@ async function loadPayments(){
 async function loadRiwayat(){
   const {data,error}=await sb.from('riwayat_pengontrak').select('*').order('tanggal_keluar',{ascending:false});
   if(!error&&data) riwayat=data;
+}
+function renderAll(){
+  renderTenants();renderDashboard();renderFinance();renderNotif();renderRiwayat();renderRumah();
 }
 
 // ── HELPERS ────────────────────────────────
@@ -731,90 +816,163 @@ const daysDiff=(a,b)=>Math.round((b-a)/864e5);
 const daysLeft=t=>daysDiff(new Date(),addMonths(new Date(t.tanggal_masuk),t.durasi_bulan));
 const pct=t=>{const s=new Date(t.tanggal_masuk),e=addMonths(s,t.durasi_bulan),tot=daysDiff(s,e),el=daysDiff(s,new Date());return Math.min(100,Math.max(0,Math.round(el/tot*100)));};
 const urgency=t=>{const d=daysLeft(t);return d<=7?'urgent':d<=30?'warning':'ok';};
+const isExpired=t=>daysLeft(t)<=0;
+const endDateOf=t=>addMonths(new Date(t.tanggal_masuk),t.durasi_bulan);
+const fmtTgl=d=>d.toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'});
+const isoLocal=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 
 // ── PEMBAYARAN / TUNGGAKAN ──────────────────
-// Daftar periode yang sudah jatuh tempo untuk sebuah pengontrak, dari tanggal
-// masuk sampai sekarang (tidak melewati akhir kontrak). Sekarang semua
-// kontrak memakai siklus tahunan (opsi per bulan sudah dihapus), jadi satu
-// periode = 12 bulan (bayar setahun sekali).
+// Daftar periode (per tahun) yang sudah jatuh tempo untuk seorang pengontrak:
+// periode ke-i dimulai pada tanggal masuk + 12·i bulan dan dianggap jatuh
+// tempo bila tanggal mulainya sudah lewat. Periode tidak melewati akhir kontrak.
+// Kunci periode = 'YYYY-MM' dari awal periode (sama dengan kolom pembayaran.bulan).
 function getDuePeriods(t){
   const start=new Date(t.tanggal_masuk);
-  const end=addMonths(start,t.durasi_bulan);
+  const total=Number(t.durasi_bulan)||0;
   const now=new Date();
-  const lastDue=now<end?now:end;
-  const step=12;
   const periods=[];
-  let cursor=new Date(start.getFullYear(),start.getMonth(),1);
-  while(cursor<=lastDue){
-    const periodEnd=addMonths(cursor,step);
-    const key=cursor.getFullYear()+'-'+String(cursor.getMonth()+1).padStart(2,'0');
-    const lastMonthOfPeriod=addMonths(cursor,step-1);
-    const label=cursor.toLocaleString('id-ID',{month:'short',year:'numeric'})+' – '+lastMonthOfPeriod.toLocaleString('id-ID',{month:'short',year:'numeric'});
-    const amount=Number(t.tarif||0)*step;
-    periods.push({key,date:new Date(cursor),label,amount});
-    cursor=periodEnd;
+  for(let i=0;i*12<total;i++){
+    const pStart=addMonths(start,12*i);
+    if(pStart>now)break;
+    const months=Math.min(12,total-12*i);
+    const key=pStart.getFullYear()+'-'+String(pStart.getMonth()+1).padStart(2,'0');
+    const lastMonth=addMonths(pStart,months-1);
+    const label=pStart.toLocaleString('id-ID',{month:'short',year:'numeric'})+' – '+lastMonth.toLocaleString('id-ID',{month:'short',year:'numeric'});
+    periods.push({key,date:pStart,label,amount:Number(t.tarif||0)*months});
   }
   return periods;
 }
-function getPaidKeys(tenantId){
-  return new Set(payments.filter(p=>p.pengontrak_id===tenantId).map(p=>String(p.bulan).slice(0,7)));
+// Total yang sudah dibayar per periode (kunci 'YYYY-MM' → nominal).
+function getPaidMap(tenantId){
+  const map={};
+  payments.filter(p=>p.pengontrak_id===tenantId).forEach(p=>{
+    const k=String(p.bulan).slice(0,7);
+    map[k]=(map[k]||0)+Number(p.jumlah||0);
+  });
+  return map;
 }
+// Tunggakan = jumlah sisa tagihan (tagihan − dibayar) dari semua periode jatuh tempo.
+// Pembayaran sebagian dihitung: periode tetap menunggak sebesar sisanya.
 function getArrears(t){
   const due=getDuePeriods(t);
-  const paid=getPaidKeys(t.id);
-  const unpaid=due.filter(m=>!paid.has(m.key));
-  const amount=unpaid.reduce((a,m)=>a+m.amount,0);
-  return{count:unpaid.length,amount,unit:'thn',months:unpaid};
+  const paid=getPaidMap(t.id);
+  const unpaid=[];
+  let paidInUnpaid=0;
+  due.forEach(m=>{
+    const p=paid[m.key]||0;
+    const sisa=Math.max(0,m.amount-p);
+    if(sisa>0){unpaid.push({...m,paid:p,sisa});paidInUnpaid+=Math.min(p,m.amount);}
+  });
+  const amount=unpaid.reduce((a,m)=>a+m.sisa,0);
+  return{count:unpaid.length,amount,unit:'thn',months:unpaid,partial:unpaid.some(m=>m.paid>0)};
+}
+// Chip status pembayaran: Lunas / Kurang Rp X (cicilan) / Nunggak N thn.
+function bayarChipHtml(t){
+  const arr=getArrears(t);
+  if(arr.count===0)return '<span class="badge badge-success">Lunas</span>';
+  if(arr.partial)return `<span class="badge badge-warn" title="Pembayaran sebagian">Kurang ${fmtRpExact(arr.amount)}</span>`;
+  return `<span class="badge badge-danger">Nunggak ${arr.count} ${arr.unit}</span>`;
 }
 
 // Render daftar periode jatuh tempo untuk pengontrak yang sedang dibuka di
-// modal, dengan tombol untuk menandai lunas / batal lunas per periode.
+// modal. Mendukung pembayaran sebagian: tampil dibayar, sisa, dan form catat.
 function renderPaymentList(){
   const wrap=document.getElementById('payment-list');
   const emptyNew=document.getElementById('payment-empty-new');
+  const help=document.getElementById('payment-help');
   if(!currentTenantId){
     wrap.innerHTML='';
     emptyNew.style.display='block';
+    help.style.display='none';
     return;
   }
   emptyNew.style.display='none';
+  help.style.display='block';
   const t=tenants.find(x=>x.id===currentTenantId);
   if(!t){wrap.innerHTML='';return;}
   const due=getDuePeriods(t).slice().reverse(); // terbaru di atas
-  const paidSet=getPaidKeys(t.id);
+  const paidMap=getPaidMap(t.id);
   if(!due.length){wrap.innerHTML='<div class="doc-empty">Belum ada periode yang jatuh tempo</div>';return;}
   wrap.innerHTML=due.map(m=>{
-    const isPaid=paidSet.has(m.key);
-    return `<div class="doc-item">
-      <span class="doc-item-icon">${isPaid?'✅':'🕓'}</span>
+    const paid=paidMap[m.key]||0;
+    const sisa=Math.max(0,m.amount-paid);
+    const full=sisa===0, partial=paid>0&&!full;
+    const icon=full?'✅':partial?'🟡':'🕓';
+    const status=full?'Lunas':partial?'Kurang '+fmtRpExact(sisa):'Belum dibayar';
+    const pctPaid=m.amount?Math.min(100,Math.round(paid/m.amount*100)):0;
+    return `<div class="doc-item pay-item">
+      <span class="doc-item-icon">${icon}</span>
       <div class="doc-item-info">
         <div class="doc-item-name">${m.label}</div>
-        <div class="doc-item-meta">${fmtRpExact(m.amount)}${isPaid?' · Lunas':' · Belum dibayar'}</div>
+        <div class="doc-item-meta">Tagihan ${fmtRpExact(m.amount)} · Dibayar ${fmtRpExact(paid)} · ${status}</div>
       </div>
-      <div class="doc-item-actions">
-        <button class="${isPaid?'doc-rm-btn':'doc-dl-btn'}" onclick="togglePayment('${m.key}',${m.amount})">${isPaid?'Batalkan':'Tandai Lunas'}</button>
-      </div>
+      ${paid>0?`<div class="doc-item-actions"><button class="doc-rm-btn" onclick="resetPayment('${m.key}')">Reset</button></div>`:''}
+      <div class="pay-bar"><div style="width:${pctPaid}%;"></div></div>
+      ${full?'':`<div class="pay-row">
+        <input class="form-input pay-in" type="number" min="0" id="pay-in-${m.key}" placeholder="Nominal bayar (Rp)">
+        <button class="doc-dl-btn" onclick="addPayment('${m.key}',${m.amount})">Catat</button>
+        <button class="doc-ok-btn" onclick="payRemaining('${m.key}',${m.amount})">Lunasi sisa</button>
+      </div>`}
     </div>`;
   }).join('');
 }
 
-async function togglePayment(periodKey,amount){
-  if(!currentTenantId)return;
-  const existing=payments.find(p=>p.pengontrak_id===currentTenantId&&String(p.bulan).slice(0,7)===periodKey);
+function getPaymentRow(tenantId,periodKey){
+  return payments.find(p=>p.pengontrak_id===tenantId&&String(p.bulan).slice(0,7)===periodKey);
+}
+// Simpan total terbayar suatu periode (satu baris per periode; jumlah = akumulasi).
+async function savePaymentTotal(periodKey,newTotal){
+  const today=new Date().toISOString().slice(0,10);
+  const existing=getPaymentRow(currentTenantId,periodKey);
   if(existing){
-    const {error}=await sb.from('pembayaran').delete().eq('id',existing.id);
-    if(error){toast('Gagal: '+error.message,true);return;}
-    payments=payments.filter(p=>p.id!==existing.id);
-    toast('Ditandai belum bayar');
+    const {data,error}=await sb.from('pembayaran').update({jumlah:newTotal,tanggal_bayar:today}).eq('id',existing.id).select();
+    if(error){toast('Gagal: '+error.message,true);return false;}
+    Object.assign(existing,(data&&data[0])?data[0]:{jumlah:newTotal,tanggal_bayar:today});
   } else {
-    const payload={pengontrak_id:currentTenantId,bulan:periodKey+'-01',jumlah:amount,tanggal_bayar:new Date().toISOString().slice(0,10)};
+    const payload={pengontrak_id:currentTenantId,bulan:periodKey+'-01',jumlah:newTotal,tanggal_bayar:today};
     const {data,error}=await sb.from('pembayaran').insert([payload]).select();
-    if(error){toast('Gagal: '+error.message,true);return;}
+    if(error){toast('Gagal: '+error.message,true);return false;}
     if(data&&data[0]) payments.push(data[0]);
-    toast('Ditandai lunas');
   }
+  return true;
+}
+function afterPaymentChange(){
   renderPaymentList();
-  renderDaftarSewa();renderTenants();renderFinance();renderDashboard();
+  renderDaftarSewa();renderTenants();renderFinance();renderDashboard();renderNotif();
+}
+// Catat pembayaran (sebagian atau penuh) — nominal ditambahkan ke yang sudah dibayar.
+async function addPayment(periodKey,amount){
+  if(!currentTenantId)return;
+  const input=document.getElementById('pay-in-'+periodKey);
+  const val=Math.round(parseFloat(input&&input.value)||0);
+  if(!(val>0)){toast('Isi nominal pembayaran',true);return;}
+  const existing=getPaymentRow(currentTenantId,periodKey);
+  const paid=existing?Number(existing.jumlah||0):0;
+  const sisa=amount-paid;
+  if(val>sisa){toast('Melebihi sisa tagihan ('+fmtRpExact(sisa)+')',true);return;}
+  const newTotal=paid+val;
+  if(!await savePaymentTotal(periodKey,newTotal))return;
+  const left=amount-newTotal;
+  toast(left>0?'Dicatat. Sisa '+fmtRpExact(left):'Periode lunas');
+  afterPaymentChange();
+}
+async function payRemaining(periodKey,amount){
+  if(!currentTenantId)return;
+  if(!await savePaymentTotal(periodKey,amount))return;
+  toast('Periode lunas');
+  afterPaymentChange();
+}
+// Hapus seluruh catatan pembayaran suatu periode (kembali ke belum dibayar).
+async function resetPayment(periodKey){
+  if(!currentTenantId)return;
+  const existing=getPaymentRow(currentTenantId,periodKey);
+  if(!existing)return;
+  if(!confirm('Hapus seluruh catatan pembayaran periode ini?'))return;
+  const {error}=await sb.from('pembayaran').delete().eq('id',existing.id);
+  if(error){toast('Gagal: '+error.message,true);return;}
+  payments=payments.filter(p=>p.id!==existing.id);
+  toast('Pembayaran periode direset');
+  afterPaymentChange();
 }
 
 // DOC TYPE META
@@ -917,6 +1075,7 @@ function renderDashboard(){
           <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.nama}</div>
           <div style="font-size:11px;color:var(--text2);">${t.rumah||'—'} · <a class="wa-btn" href="${wl}" target="_blank">WA</a></div>
         </div>
+        ${d<=0?`<button class="doc-rm-btn" onclick="openExpiredModal(${t.id})">Konfirmasi</button>`:''}
         <span class="badge ${ug==='urgent'?'badge-danger':'badge-warn'}">${d<=0?'Habis!':d+' hr'}</span>
       </div>`;
     }).join('')
@@ -984,12 +1143,11 @@ function renderDaftarSewa(){
 
   tbody.innerHTML=list.map(t=>{
     const d=daysLeft(t),ug=urgency(t);
-    const chip=ug==='urgent'?'<span class="badge badge-danger">Kritis</span>':ug==='warning'?'<span class="badge badge-warn">Hampir</span>':'<span class="badge badge-success">Aktif</span>';
+    const chip=d<=0?'<span class="badge badge-danger">Habis</span>':ug==='urgent'?'<span class="badge badge-danger">Kritis</span>':ug==='warning'?'<span class="badge badge-warn">Hampir</span>':'<span class="badge badge-success">Aktif</span>';
     const dStr=d<=0?`<span style="color:var(--red);font-weight:700;">Habis!</span>`:ug==='urgent'?`<span style="color:var(--red);font-weight:700;">${d}hr</span>`:ug==='warning'?`<span style="color:var(--amber);font-weight:700;">${d}hr</span>`:`${d}hr`;
 
-    // status pembayaran
-    const arr=getArrears(t);
-    const bayarChip=arr.count===0?'<span class="badge badge-success">Lunas</span>':`<span class="badge badge-danger">Nunggak ${arr.count} ${arr.unit}</span>`;
+    // status pembayaran (Lunas / Kurang Rp X / Nunggak)
+    const bayarChip=bayarChipHtml(t);
 
     // berkas badges
     let berkasHtml='<span style="font-size:11px;color:var(--text3);">—</span>';
@@ -1040,8 +1198,7 @@ function renderTenants(){
       docBadges=`<div class="doc-badges">${Object.entries(counts).map(([type,cnt])=>{const m=DOC_META[type]||DOC_META.lainnya;return `<span class="doc-badge badge ${m.color}">${m.icon} ${m.label}${cnt>1?' ×'+cnt:''}</span>`;}).join('')}</div>`;
     }
 
-    const arr=getArrears(t);
-    const bayarChip=arr.count===0?'<span class="badge badge-success">Lunas</span>':`<span class="badge badge-danger">Nunggak ${arr.count} ${arr.unit}</span>`;
+    const bayarChip=bayarChipHtml(t);
 
     return `<div class="tcard ${ug!=='ok'?ug:''}" onclick="openTenantModal(${t.id})">
       <div class="tcard-top">${avatar}
@@ -1109,19 +1266,19 @@ function renderFinance(){
 
   document.getElementById('fin-monthly').textContent=fmtRpExact(monthly);
   document.getElementById('fin-contract-total').textContent=fmtRpExact(contractTotal);
-  document.getElementById('fin-contract-sub').textContent=`${tenants.length} kontrak aktif`;
+  document.getElementById('fin-contract-sub').textContent=`dari ${tenants.length} kontrak aktif`;
   document.getElementById('fin-total').textContent=fmtRpExact(proj);
   document.getElementById('fin-received').textContent=fmtRpExact(received);
   document.getElementById('fin-arrears').textContent=fmtRpExact(totalArrears);
-  document.getElementById('fin-arrears-sub').textContent=owingCount>0?`${owingCount} kontrak menunggak`:'tidak ada tunggakan';
+  document.getElementById('fin-arrears-sub').textContent=owingCount>0?`${owingCount} pengontrak belum lunas`:'semua pengontrak lunas';
   document.getElementById('fin-avg').textContent=fmtRpExact(avg);
   document.getElementById('fin-risk').textContent=fmtRpExact(risk);
 
   document.getElementById('fin-tbody').innerHTML=[...tenants].sort((a,b)=>daysLeft(a)-daysLeft(b)).map(t=>{
     const d=Math.max(0,daysLeft(t)),months=d/30,prj=Number(t.tarif||0)*months,ug=urgency(t);
-    const chip=ug==='urgent'?'<span class="badge badge-danger">Kritis</span>':ug==='warning'?'<span class="badge badge-warn">Hampir</span>':'<span class="badge badge-success">Aktif</span>';
+    const chip=daysLeft(t)<=0?'<span class="badge badge-danger">Habis</span>':ug==='urgent'?'<span class="badge badge-danger">Kritis</span>':ug==='warning'?'<span class="badge badge-warn">Hampir</span>':'<span class="badge badge-success">Aktif</span>';
     const arr=getArrears(t);
-    const tunggakanCell=arr.count===0?'<span style="color:var(--text3);">Lunas</span>':`<span style="color:var(--red);font-weight:700;">${fmtRpExact(arr.amount)}</span>`;
+    const tunggakanCell=arr.count===0?'<span style="color:var(--text3);">Lunas</span>':`<span style="color:var(--red);font-weight:700;">${fmtRpExact(arr.amount)}</span>${arr.partial?'<div style="font-size:10px;color:var(--amber);">pembayaran sebagian</div>':''}`;
     const wa=(t.wa||'').replace(/\D/g,'');
     const wl=`https://wa.me/62${wa.startsWith('0')?wa.slice(1):wa}?text=Halo%20${encodeURIComponent(t.nama)}`;
     return `<tr><td style="font-weight:600;">${t.nama}</td><td>${t.rumah||'—'}</td><td>${fmtTarifDisplay(t)}</td><td>${fmtDur(Math.round(months))}</td><td style="font-weight:700;color:var(--teal-mid);">${fmtRpExact(prj)}</td><td>${tunggakanCell}</td><td>${chip} <a class="wa-btn" href="${wl}" target="_blank">WA</a></td></tr>`;
@@ -1133,8 +1290,20 @@ function renderNotif(){
   const urgent=tenants.filter(t=>urgency(t)==='urgent');
   const warning=tenants.filter(t=>urgency(t)==='warning');
   let items=[];
-  urgent.forEach(t=>{const d=daysLeft(t);const wa=(t.wa||'').replace(/\D/g,'');const wl=`https://wa.me/62${wa.startsWith('0')?wa.slice(1):wa}?text=Halo%20${encodeURIComponent(t.nama)},%20kontrak%20${encodeURIComponent(t.rumah||'')}%20sudah%20hampir%20habis.`;items.push({icon:'!',bg:'var(--red-light)',col:'var(--red)',text:`<b>${t.nama}</b> (${t.rumah||'—'}) ${d<=0?'kontraknya sudah habis!':'kontrak habis dalam '+d+' hari!'}`,sub:`<a class="wa-btn" href="${wl}" target="_blank">Hubungi WA</a>`,time:'Sekarang'});});
+  urgent.forEach(t=>{
+    const d=daysLeft(t);const wa=(t.wa||'').replace(/\D/g,'');
+    const wl=`https://wa.me/62${wa.startsWith('0')?wa.slice(1):wa}?text=Halo%20${encodeURIComponent(t.nama)},%20kontrak%20${encodeURIComponent(t.rumah||'')}%20sudah%20hampir%20habis.`;
+    const konfirmasi=d<=0?` <button class="doc-rm-btn" onclick="openExpiredModal(${t.id})">Konfirmasi pindah ke Riwayat</button>`:'';
+    items.push({icon:'!',bg:'var(--red-light)',col:'var(--red)',text:`<b>${t.nama}</b> (${t.rumah||'—'}) ${d<=0?'kontraknya sudah habis!':'kontrak habis dalam '+d+' hari!'}`,sub:`<a class="wa-btn" href="${wl}" target="_blank">Hubungi WA</a>${konfirmasi}`,time:'Sekarang'});
+  });
   warning.forEach(t=>{const d=daysLeft(t);const wa=(t.wa||'').replace(/\D/g,'');const wl=`https://wa.me/62${wa.startsWith('0')?wa.slice(1):wa}?text=Halo%20${encodeURIComponent(t.nama)},%20kontrak%20${encodeURIComponent(t.rumah||'')}%20akan%20habis%20dalam%20${d}%20hari.`;items.push({icon:'i',bg:'var(--amber-light)',col:'var(--amber)',text:`<b>${t.nama}</b> (${t.rumah||'—'}) kontrak habis dalam ${d} hari`,sub:`<a class="wa-btn" href="${wl}" target="_blank">Hubungi WA</a>`,time:'Hari ini'});});
+  // Pembayaran sebagian / tunggakan
+  tenants.forEach(t=>{
+    const arr=getArrears(t);
+    if(arr.count>0){
+      items.push({icon:'Rp',bg:'var(--amber-light)',col:'var(--amber)',text:`<b>${t.nama}</b> (${t.rumah||'—'}) ${arr.partial?'baru membayar sebagian,':'belum membayar,'} sisa <b>${fmtRpExact(arr.amount)}</b>`,sub:'Buka data pengontrak untuk mencatat pembayaran',time:'Tagihan'});
+    }
+  });
   if(!items.length)items.push({icon:'✓',bg:'var(--green-light)',col:'var(--green)',text:'Semua kontrak aman',sub:'Tidak ada yang perlu segera ditindak lanjuti',time:'—'});
   items.push({icon:'☁',bg:'var(--blue-light)',col:'var(--blue)',text:'Data tersinkron dari cloud',sub:'Akses dari device manapun',time:'Auto'});
   document.getElementById('notif-list').innerHTML=items.map(it=>`<div class="notif-item"><div class="notif-icon" style="background:${it.bg};color:${it.col};">${it.icon}</div><div style="flex:1;"><div style="font-size:13px;line-height:1.5;">${it.text}</div><div style="font-size:11px;color:var(--text3);margin-top:2px;">${it.sub}</div></div><div style="font-size:11px;color:var(--text3);white-space:nowrap;margin-left:7px;">${it.time}</div></div>`).join('');
@@ -1145,21 +1314,25 @@ function markRead(){document.getElementById('notif-dot').classList.remove('show'
 function renderRiwayat(){
   const totalEl=document.getElementById('riw-total');
   const countEl=document.getElementById('riw-count');
+  const arrEl=document.getElementById('riw-arrears');
   if(!totalEl||!countEl)return; // halaman belum di-render (misal saat load awal)
   const total=riwayat.reduce((a,r)=>a+Number(r.total_diterima||0),0);
+  const totalArr=riwayat.reduce((a,r)=>a+Number(r.tunggakan||0),0);
   totalEl.textContent=fmtRpExact(total);
+  if(arrEl)arrEl.textContent=fmtRpExact(totalArr);
   countEl.textContent=riwayat.length;
 
   const q=(document.getElementById('riw-search')?.value||'').toLowerCase();
   const list=riwayat.filter(r=>(r.nama||'').toLowerCase().includes(q)||(r.rumah||'').toLowerCase().includes(q));
   const tbody=document.getElementById('riw-tbody');
-  if(!list.length){tbody.innerHTML='<tr><td colspan="6"><div class="empty-state">Belum ada riwayat pengontrak</div></td></tr>';return;}
+  if(!list.length){tbody.innerHTML='<tr><td colspan="7"><div class="empty-state">Belum ada riwayat pengontrak</div></td></tr>';return;}
 
   tbody.innerHTML=list.map(r=>{
     const masuk=r.tanggal_masuk?new Date(r.tanggal_masuk).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}):'—';
     const keluar=r.tanggal_keluar?new Date(r.tanggal_keluar).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}):'—';
     const durBulan=(r.tanggal_masuk&&r.tanggal_keluar)?Math.max(0,Math.round(daysDiff(new Date(r.tanggal_masuk),new Date(r.tanggal_keluar))/30)):0;
     const biaya=fmtRpExact(Number(r.tarif||0)*12)+'/thn';
+    const tg=Number(r.tunggakan||0);
     return `<tr>
       <td style="font-weight:600;">${r.nama||'—'}</td>
       <td>${r.rumah||'—'}</td>
@@ -1167,6 +1340,7 @@ function renderRiwayat(){
       <td>${fmtDur(durBulan)}</td>
       <td>${biaya}</td>
       <td style="font-weight:700;color:var(--teal-mid);">${fmtRpExact(r.total_diterima||0)}</td>
+      <td>${tg>0?`<span style="color:var(--red);font-weight:700;">${fmtRpExact(tg)}</span>`:'<span style="color:var(--text3);">—</span>'}</td>
     </tr>`;
   }).join('');
 }
@@ -1300,7 +1474,8 @@ function openTenantModal(id){
     document.getElementById('f-ktp-no').value=t.no_ktp||'';
     setRateForm(t.tarif||0);
     document.getElementById('f-start').value=t.tanggal_masuk||'';
-    setDurForm(t.durasi_bulan||0);    document.getElementById('f-note').value=t.catatan||'';
+    setDurForm(t.durasi_bulan||0);
+    document.getElementById('f-note').value=t.catatan||'';
     if(t.foto_url) document.getElementById('photo-preview').innerHTML=`<img src="${t.foto_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
     // Load existing berkas
     if(t.berkas&&Array.isArray(t.berkas)){
@@ -1336,6 +1511,7 @@ async function saveTenant(){
 
   const payload={nama,wa,no_ktp:noKtp,rumah,tarif,siklus_bayar:siklusBayar,tanggal_masuk:start,durasi_bulan:dur,catatan:note,foto_url,berkas:berkasToSave};
 
+  const wasEdit=!!currentTenantId;
   let error;
   if(currentTenantId){
     ({error}=await sb.from('pengontrak').update(payload).eq('id',currentTenantId));
@@ -1347,7 +1523,7 @@ async function saveTenant(){
   closeModal('modal-tenant');
   await loadTenants();
   renderTenants();renderDashboard();renderFinance();renderNotif();
-  toast(currentTenantId?'Pengontrak diperbarui':'Pengontrak ditambahkan');
+  toast(wasEdit?'Pengontrak diperbarui':'Pengontrak ditambahkan');
 }
 
 async function deleteTenant(){
@@ -1360,30 +1536,95 @@ async function deleteTenant(){
   toast('Pengontrak dihapus');
 }
 
-// Pindahkan pengontrak yang sudah keluar/pindah ke tabel riwayat, sambil
-// menyimpan total uang yang sudah diterima darinya (dari riwayat pembayaran),
-// lalu hapus dari daftar pengontrak aktif sehingga rumahnya jadi kosong lagi.
+// Inti pemindahan ke riwayat: simpan total diterima + sisa tunggakan, lalu
+// hapus dari daftar pengontrak aktif sehingga rumahnya kosong kembali.
+// Mengembalikan null bila sukses, atau pesan galat bila gagal.
+async function archiveTenantCore(t,tglKeluar){
+  const totalDiterima=payments.filter(p=>p.pengontrak_id===t.id).reduce((a,p)=>a+Number(p.jumlah||0),0);
+  const arr=getArrears(t);
+  const payload={
+    nama:t.nama, wa:t.wa, rumah:t.rumah, tarif:t.tarif, siklus_bayar:t.siklus_bayar||'tahunan',
+    tanggal_masuk:t.tanggal_masuk, tanggal_keluar:tglKeluar,
+    total_diterima:totalDiterima, tunggakan:arr.amount, catatan:t.catatan||''
+  };
+  let {error:insErr}=await sb.from('riwayat_pengontrak').insert([payload]);
+  // Jika kolom 'tunggakan' belum dibuat di database, simpan tanpa kolom itu.
+  if(insErr&&/tunggakan/i.test(insErr.message||'')){
+    delete payload.tunggakan;
+    ({error:insErr}=await sb.from('riwayat_pengontrak').insert([payload]));
+  }
+  if(insErr)return 'Gagal simpan riwayat: '+insErr.message;
+
+  const {error:delErr}=await sb.from('pengontrak').delete().eq('id',t.id);
+  if(delErr)return 'Gagal hapus data aktif: '+delErr.message;
+
+  await Promise.all([loadTenants(),loadPayments(),loadRiwayat()]);
+  renderAll();
+  return null;
+}
+
+// Pindahkan manual dari modal pengontrak (tanggal keluar = hari ini).
 async function archiveTenant(){
   const t=tenants.find(x=>x.id===currentTenantId);
   if(!t)return;
-  if(!confirm(`Pindahkan "${t.nama}" ke Riwayat?\n\nData pengontrak aktif akan dihapus dan rumah "${t.rumah||'-'}" akan menjadi kosong. Total pendapatan dari riwayat pembayarannya akan disimpan.`))return;
-
-  const totalDiterima=payments.filter(p=>p.pengontrak_id===currentTenantId).reduce((a,p)=>a+Number(p.jumlah||0),0);
-  const payload={
-    nama:t.nama, wa:t.wa, rumah:t.rumah, tarif:t.tarif, siklus_bayar:t.siklus_bayar||'tahunan',
-    tanggal_masuk:t.tanggal_masuk, tanggal_keluar:new Date().toISOString().slice(0,10),
-    total_diterima:totalDiterima, catatan:t.catatan||''
-  };
-  const {error:insErr}=await sb.from('riwayat_pengontrak').insert([payload]);
-  if(insErr){toast('Gagal simpan riwayat: '+insErr.message,true);return;}
-
-  const {error:delErr}=await sb.from('pengontrak').delete().eq('id',currentTenantId);
-  if(delErr){toast('Gagal hapus data aktif: '+delErr.message,true);return;}
-
+  const arr=getArrears(t);
+  const infoTg=arr.amount>0?`\n\nCatatan: masih ada sisa tagihan ${fmtRpExact(arr.amount)} yang akan dicatat sebagai tunggakan di Riwayat.`:'';
+  if(!confirm(`Pindahkan "${t.nama}" ke Riwayat?\n\nData pengontrak aktif akan dihapus dan rumah "${t.rumah||'-'}" akan menjadi kosong. Total pendapatan dari riwayat pembayarannya akan disimpan.${infoTg}`))return;
+  const err=await archiveTenantCore(t,isoLocal(new Date()));
+  if(err){toast(err,true);return;}
   closeModal('modal-tenant');
-  await Promise.all([loadTenants(),loadPayments(),loadRiwayat()]);
-  renderTenants();renderDashboard();renderFinance();renderNotif();renderRiwayat();renderRumah();
   toast(`${t.nama} dipindahkan ke Riwayat`);
+  checkExpired();
+}
+
+// ── KONFIRMASI KONTRAK HABIS ───────────────
+// Saat kontrak sudah habis, pengelola diminta memutuskan: pindahkan ke
+// Riwayat (rumah dikosongkan), perpanjang/edit, atau tunda.
+function checkExpired(){
+  if(document.getElementById('modal-expired').classList.contains('open'))return;
+  if(document.getElementById('modal-tenant').classList.contains('open'))return;
+  const t=tenants.find(x=>isExpired(x)&&!expiredDismissed.has(x.id));
+  if(t) openExpiredModal(t.id);
+}
+function openExpiredModal(id){
+  const t=tenants.find(x=>x.id===id);
+  if(!t)return;
+  expiredId=id;
+  const arr=getArrears(t);
+  const notice=arr.amount>0
+    ?`<div class="notice warn">Masih ada sisa tagihan <b>${fmtRpExact(arr.amount)}</b>${arr.partial?' (pembayaran baru sebagian)':''}. Nominal ini akan dicatat sebagai tunggakan di Riwayat.</div>`
+    :`<div class="notice ok">Seluruh tagihan sudah lunas.</div>`;
+  document.getElementById('exp-body').innerHTML=`
+    <div style="font-size:13px;line-height:1.6;">
+      Kontrak <b>${t.nama}</b> di <b>${t.rumah||'—'}</b> telah berakhir pada <b>${fmtTgl(endDateOf(t))}</b>.<br>
+      Apakah pengontrak ini dikeluarkan dari rumah dan dipindahkan ke Riwayat?
+    </div>
+    ${notice}
+    <div style="font-size:11px;color:var(--text3);margin-top:10px;">Pilih "Perpanjang / Edit" bila pengontrak melanjutkan sewa, atau "Nanti" untuk menunda keputusan.</div>`;
+  const b=document.getElementById('btn-confirm-exp');b.disabled=false;b.textContent='Pindahkan ke Riwayat';
+  document.getElementById('modal-expired').classList.add('open');
+}
+async function confirmExpired(){
+  const t=tenants.find(x=>x.id===expiredId);
+  if(!t){closeModal('modal-expired');return;}
+  const b=document.getElementById('btn-confirm-exp');
+  b.disabled=true;b.textContent='Memindahkan...';
+  const err=await archiveTenantCore(t,isoLocal(endDateOf(t)));
+  if(err){toast(err,true);b.disabled=false;b.textContent='Pindahkan ke Riwayat';return;}
+  closeModal('modal-expired');
+  toast(`${t.nama} dipindahkan ke Riwayat`);
+  checkExpired(); // lanjut ke kontrak habis berikutnya (jika ada)
+}
+function dismissExpired(){
+  if(expiredId!==null)expiredDismissed.add(expiredId);
+  closeModal('modal-expired');
+  checkExpired();
+}
+function extendExpired(){
+  const id=expiredId;
+  if(id!==null)expiredDismissed.add(id);
+  closeModal('modal-expired');
+  openTenantModal(id);
 }
 
 // ── MODAL RUMAH ────────────────────────────
@@ -1401,6 +1642,7 @@ async function saveRumah(){
   if(!nama){toast('Nama rumah wajib diisi',true);return;}
   btn.disabled=true;btn.textContent='Menyimpan...';
   const payload={nama,alamat:document.getElementById('r-addr').value.trim(),catatan:document.getElementById('r-note').value.trim()};
+  const wasEdit=!!currentRumahId;
   let error;
   if(currentRumahId){({error}=await sb.from('rumah').update(payload).eq('id',currentRumahId));}
   else{({error}=await sb.from('rumah').insert([payload]));}
@@ -1408,7 +1650,7 @@ async function saveRumah(){
   if(error){toast('Gagal: '+error.message,true);return;}
   closeModal('modal-rumah');
   await loadRumah();renderRumah();renderDashboard();
-  toast(currentRumahId?'Rumah diperbarui':'Rumah ditambahkan');
+  toast(wasEdit?'Rumah diperbarui':'Rumah ditambahkan');
 }
 async function deleteRumah(){
   if(!confirm('Hapus rumah ini?'))return;
@@ -1487,8 +1729,9 @@ CREATE TABLE IF NOT EXISTS pengontrak (
   created_at     TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Tabel pembayaran (riwayat lunas per periode per pengontrak;
--- satu baris = satu tahun kontrak)
+-- Tabel pembayaran (satu baris = satu periode/tahun kontrak;
+-- kolom jumlah = TOTAL yang sudah dibayar pada periode itu, sehingga
+-- bisa dicicil: sisa = tagihan − jumlah. Tidak perlu perubahan skema.)
 CREATE TABLE IF NOT EXISTS pembayaran (
   id             BIGSERIAL PRIMARY KEY,
   pengontrak_id  BIGINT NOT NULL REFERENCES pengontrak(id) ON DELETE CASCADE,
@@ -1521,7 +1764,7 @@ UPDATE pengontrak SET siklus_bayar='tahunan' WHERE siklus_bayar IS DISTINCT FROM
 ALTER TABLE pengontrak ALTER COLUMN siklus_bayar SET DEFAULT 'tahunan';
 
 -- Tabel riwayat pengontrak (arsip pengontrak yang sudah pindah/keluar,
--- beserta total pendapatan yang sudah diterima darinya)
+-- beserta total pendapatan yang sudah diterima dan sisa tunggakannya)
 CREATE TABLE IF NOT EXISTS riwayat_pengontrak (
   id             BIGSERIAL PRIMARY KEY,
   nama           TEXT,
@@ -1532,11 +1775,15 @@ CREATE TABLE IF NOT EXISTS riwayat_pengontrak (
   tanggal_masuk  DATE,
   tanggal_keluar DATE,
   total_diterima NUMERIC DEFAULT 0,
+  tunggakan      NUMERIC DEFAULT 0,
   catatan        TEXT,
   arsip_at       TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE riwayat_pengontrak ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "akses auth" ON riwayat_pengontrak FOR ALL USING (auth.role()='authenticated');
+
+-- WAJIB untuk tabel riwayat yang sudah ada (fitur tunggakan di Riwayat):
+ALTER TABLE riwayat_pengontrak ADD COLUMN IF NOT EXISTS tunggakan NUMERIC DEFAULT 0;
 
 ══════════════════════════════════════════════════
 */
