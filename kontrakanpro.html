@@ -240,6 +240,16 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
 .fin-example{background:var(--bg2);border-radius:var(--radius);padding:10px 12px;margin-top:6px;}
 @media(max-width:640px){.fin-grid{grid-template-columns:1fr;}}
 
+
+/* ── PERPANJANGAN KONTRAK ── */
+.pay-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.pay-opt{display:flex;align-items:center;gap:7px;padding:9px 11px;border:0.5px solid var(--border2);border-radius:var(--radius);font-size:13px;cursor:pointer;background:var(--bg);}
+.pay-opt:has(input:checked){border-color:var(--teal-mid);background:var(--teal-light);color:var(--teal);font-weight:600;}
+.ext-sum{background:var(--bg2);border-radius:var(--radius);padding:10px 12px;font-size:12px;line-height:1.8;margin-top:6px;}
+.ext-sum .row{display:flex;justify-content:space-between;gap:10px;}
+.ext-sum .row b{text-align:right;}
+.ext-sum .row.sisa b{color:var(--red);}
+
 /* ── MISC ── */
 .empty-state{text-align:center;padding:34px 16px;color:var(--text3);font-size:13px;}
 .loading-spinner{display:flex;align-items:center;justify-content:center;gap:8px;padding:32px;color:var(--text2);font-size:13px;}
@@ -626,6 +636,7 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
     <div class="modal-foot">
       <div style="display:flex;gap:7px;margin-right:auto;">
         <button class="btn-danger" id="btn-delete" onclick="deleteTenant()" style="display:none">Hapus</button>
+        <button class="btn-cancel" id="btn-extend" onclick="extendFromTenant()" style="display:none;border-color:var(--teal-mid);color:var(--teal-mid);">Perpanjang</button>
         <button class="btn-cancel" id="btn-archive" onclick="archiveTenant()" style="display:none;border-color:var(--amber);color:var(--amber);">Pindah ke Riwayat</button>
       </div>
       <button class="btn-cancel" onclick="closeModal('modal-tenant')">Batal</button>
@@ -654,17 +665,21 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
   </div>
 </div>
 
-<!-- MODAL KONFIRMASI KONTRAK HABIS -->
+<!-- MODAL KONFIRMASI KONTRAK HABIS / PERPANJANGAN -->
 <div class="modal-backdrop" id="modal-expired">
   <div class="modal" style="max-width:430px;">
     <div class="modal-head">
-      <div class="modal-title">Kontrak Telah Berakhir</div>
+      <div class="modal-title" id="exp-title">Kontrak Telah Berakhir</div>
     </div>
     <div class="modal-body" id="exp-body"></div>
-    <div class="modal-foot">
+    <div class="modal-foot" id="exp-foot-decide">
       <button class="btn-cancel" onclick="dismissExpired()">Nanti</button>
-      <button class="btn-cancel" onclick="extendExpired()">Perpanjang / Edit</button>
+      <button class="btn-cancel" style="border-color:var(--teal-mid);color:var(--teal-mid);" onclick="openExtendForm()">Perpanjang Kontrak</button>
       <button class="btn-save" id="btn-confirm-exp" onclick="confirmExpired()">Pindahkan ke Riwayat</button>
+    </div>
+    <div class="modal-foot" id="exp-foot-extend" style="display:none;">
+      <button class="btn-cancel" onclick="backToDecide()">Kembali</button>
+      <button class="btn-save" id="btn-save-ext" onclick="saveExtension()">Simpan Perpanjangan</button>
     </div>
   </div>
 </div>
@@ -700,7 +715,7 @@ let currentDocType='';
 // dashboard sort
 let dsCol='nama', dsDir='asc';
 // konfirmasi kontrak habis
-let expiredId=null;
+let expiredId=null, extendFrom='expired';
 const expiredDismissed=new Set(); // ditunda selama sesi halaman ini
 
 // ── THEME ──────────────────────────────────
@@ -826,14 +841,12 @@ const isoLocal=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'
 // periode ke-i dimulai pada tanggal masuk + 12·i bulan dan dianggap jatuh
 // tempo bila tanggal mulainya sudah lewat. Periode tidak melewati akhir kontrak.
 // Kunci periode = 'YYYY-MM' dari awal periode (sama dengan kolom pembayaran.bulan).
-function getDuePeriods(t){
+function getAllPeriods(t,totalMonths){
   const start=new Date(t.tanggal_masuk);
-  const total=Number(t.durasi_bulan)||0;
-  const now=new Date();
+  const total=Number(totalMonths)||0;
   const periods=[];
   for(let i=0;i*12<total;i++){
     const pStart=addMonths(start,12*i);
-    if(pStart>now)break;
     const months=Math.min(12,total-12*i);
     const key=pStart.getFullYear()+'-'+String(pStart.getMonth()+1).padStart(2,'0');
     const lastMonth=addMonths(pStart,months-1);
@@ -841,6 +854,10 @@ function getDuePeriods(t){
     periods.push({key,date:pStart,label,amount:Number(t.tarif||0)*months});
   }
   return periods;
+}
+function getDuePeriods(t){
+  const now=new Date();
+  return getAllPeriods(t,t.durasi_bulan).filter(p=>p.date<=now);
 }
 // Total yang sudah dibayar per periode (kunci 'YYYY-MM' → nominal).
 function getPaidMap(tenantId){
@@ -921,21 +938,22 @@ function getPaymentRow(tenantId,periodKey){
   return payments.find(p=>p.pengontrak_id===tenantId&&String(p.bulan).slice(0,7)===periodKey);
 }
 // Simpan total terbayar suatu periode (satu baris per periode; jumlah = akumulasi).
-async function savePaymentTotal(periodKey,newTotal){
+async function upsertPayment(tenantId,periodKey,newTotal){
   const today=new Date().toISOString().slice(0,10);
-  const existing=getPaymentRow(currentTenantId,periodKey);
+  const existing=getPaymentRow(tenantId,periodKey);
   if(existing){
     const {data,error}=await sb.from('pembayaran').update({jumlah:newTotal,tanggal_bayar:today}).eq('id',existing.id).select();
     if(error){toast('Gagal: '+error.message,true);return false;}
     Object.assign(existing,(data&&data[0])?data[0]:{jumlah:newTotal,tanggal_bayar:today});
   } else {
-    const payload={pengontrak_id:currentTenantId,bulan:periodKey+'-01',jumlah:newTotal,tanggal_bayar:today};
+    const payload={pengontrak_id:tenantId,bulan:periodKey+'-01',jumlah:newTotal,tanggal_bayar:today};
     const {data,error}=await sb.from('pembayaran').insert([payload]).select();
     if(error){toast('Gagal: '+error.message,true);return false;}
     if(data&&data[0]) payments.push(data[0]);
   }
   return true;
 }
+function savePaymentTotal(periodKey,newTotal){return upsertPayment(currentTenantId,periodKey,newTotal);}
 function afterPaymentChange(){
   renderPaymentList();
   renderDaftarSewa();renderTenants();renderFinance();renderDashboard();renderNotif();
@@ -1457,6 +1475,7 @@ function openTenantModal(id){
   document.getElementById('btn-delete').style.display=isEdit?'block':'none';
   document.getElementById('btn-delete').textContent='Hapus';
   document.getElementById('btn-archive').style.display=isEdit?'block':'none';
+  document.getElementById('btn-extend').style.display=isEdit?'block':'none';
   document.getElementById('photo-preview').innerHTML='<span style="font-size:11px;color:var(--text3);">Foto</span>';
   ['f-name','f-wa','f-ktp-no','f-note'].forEach(x=>document.getElementById(x).value='');
   document.getElementById('f-rate').value='';
@@ -1589,27 +1608,34 @@ function checkExpired(){
 function openExpiredModal(id){
   const t=tenants.find(x=>x.id===id);
   if(!t)return;
-  expiredId=id;
+  expiredId=id;extendFrom='expired';
   const arr=getArrears(t);
   const notice=arr.amount>0
-    ?`<div class="notice warn">Masih ada sisa tagihan <b>${fmtRpExact(arr.amount)}</b>${arr.partial?' (pembayaran baru sebagian)':''}. Nominal ini akan dicatat sebagai tunggakan di Riwayat.</div>`
+    ?`<div class="notice warn">Masih ada sisa tagihan <b>${fmtRpExact(arr.amount)}</b>${arr.partial?' (pembayaran baru sebagian)':''}. Nominal ini akan dicatat sebagai tunggakan di Riwayat bila dipindahkan.</div>`
     :`<div class="notice ok">Seluruh tagihan sudah lunas.</div>`;
+  document.getElementById('exp-title').textContent=isExpired(t)?'Kontrak Telah Berakhir':'Kontrak Pengontrak';
   document.getElementById('exp-body').innerHTML=`
     <div style="font-size:13px;line-height:1.6;">
-      Kontrak <b>${t.nama}</b> di <b>${t.rumah||'—'}</b> telah berakhir pada <b>${fmtTgl(endDateOf(t))}</b>.<br>
-      Apakah pengontrak ini dikeluarkan dari rumah dan dipindahkan ke Riwayat?
+      Kontrak <b>${t.nama}</b> di <b>${t.rumah||'—'}</b> ${isExpired(t)?'telah berakhir pada':'berakhir pada'} <b>${fmtTgl(endDateOf(t))}</b>.<br>
+      Apakah pengontrak ini dipindahkan ke Riwayat (rumah dikosongkan), atau kontraknya diperpanjang?
     </div>
     ${notice}
-    <div style="font-size:11px;color:var(--text3);margin-top:10px;">Pilih "Perpanjang / Edit" bila pengontrak melanjutkan sewa, atau "Nanti" untuk menunda keputusan.</div>`;
+    <div style="font-size:11px;color:var(--text3);margin-top:10px;">"Perpanjang Kontrak" memajukan tanggal berakhir dan mencatat pembayarannya. "Nanti" menunda keputusan.</div>`;
+  setExpiredView('decide');
   const b=document.getElementById('btn-confirm-exp');b.disabled=false;b.textContent='Pindahkan ke Riwayat';
   document.getElementById('modal-expired').classList.add('open');
+}
+function setExpiredView(v){
+  document.getElementById('exp-foot-decide').style.display=v==='decide'?'':'none';
+  document.getElementById('exp-foot-extend').style.display=v==='extend'?'':'none';
 }
 async function confirmExpired(){
   const t=tenants.find(x=>x.id===expiredId);
   if(!t){closeModal('modal-expired');return;}
   const b=document.getElementById('btn-confirm-exp');
   b.disabled=true;b.textContent='Memindahkan...';
-  const err=await archiveTenantCore(t,isoLocal(endDateOf(t)));
+  const tgl=isExpired(t)?isoLocal(endDateOf(t)):isoLocal(new Date());
+  const err=await archiveTenantCore(t,tgl);
   if(err){toast(err,true);b.disabled=false;b.textContent='Pindahkan ke Riwayat';return;}
   closeModal('modal-expired');
   toast(`${t.nama} dipindahkan ke Riwayat`);
@@ -1620,11 +1646,102 @@ function dismissExpired(){
   closeModal('modal-expired');
   checkExpired();
 }
-function extendExpired(){
-  const id=expiredId;
-  if(id!==null)expiredDismissed.add(id);
+
+// ── PERPANJANGAN KONTRAK ───────────────────
+// Memajukan tanggal berakhir (durasi_bulan bertambah) dan mencatat pembayaran
+// perpanjangan: Lunas (seluruhnya) atau Belum lunas (isi nominal yang sudah
+// dibayar; sisanya menjadi tunggakan). Pembayaran dialokasikan berurutan ke
+// periode tahun yang baru.
+function getExtendPeriods(t,years){
+  const old=Number(t.durasi_bulan)||0;
+  return getAllPeriods(t,old+years*12).slice(Math.ceil(old/12));
+}
+function openExtendForm(){
+  const t=tenants.find(x=>x.id===expiredId);
+  if(!t)return;
+  document.getElementById('exp-title').textContent='Perpanjang Kontrak';
+  document.getElementById('exp-body').innerHTML=`
+    <div style="font-size:13px;line-height:1.6;">
+      Perpanjang kontrak <b>${t.nama}</b> di <b>${t.rumah||'—'}</b>.<br>
+      Kontrak saat ini berakhir: <b>${fmtTgl(endDateOf(t))}</b> · Biaya sewa: <b>${fmtTarifDisplay(t)}</b>
+    </div>
+    <div class="form-group" style="margin-top:12px;">
+      <label class="form-label">Lama perpanjangan (tahun)</label>
+      <input class="form-input" id="ext-years" type="number" min="1" step="1" value="1" oninput="updateExtendPreview()">
+    </div>
+    <div class="section-divider" style="margin-top:6px;">Pembayaran perpanjangan</div>
+    <div class="pay-opts">
+      <label class="pay-opt"><input type="radio" name="ext-pay" value="lunas" checked onchange="updateExtendPreview()"> Lunas</label>
+      <label class="pay-opt"><input type="radio" name="ext-pay" value="belum" onchange="updateExtendPreview()"> Belum lunas</label>
+    </div>
+    <div class="form-group" id="ext-paid-wrap" style="display:none;">
+      <label class="form-label">Nominal yang sudah dibayar (Rp) — isi 0 bila belum bayar sama sekali</label>
+      <input class="form-input" id="ext-paid" type="number" min="0" placeholder="0" oninput="updateExtendPreview()">
+    </div>
+    <div class="ext-sum" id="ext-preview"></div>`;
+  setExpiredView('extend');
+  document.getElementById('btn-save-ext').disabled=false;
+  updateExtendPreview();
+}
+function readExtendForm(){
+  const t=tenants.find(x=>x.id===expiredId);
+  const years=Math.max(0,parseInt(document.getElementById('ext-years').value)||0);
+  const periods=t?getExtendPeriods(t,years):[];
+  const total=periods.reduce((a,p)=>a+p.amount,0);
+  const mode=(document.querySelector('input[name="ext-pay"]:checked')||{}).value||'lunas';
+  const paid=mode==='lunas'?total:Math.max(0,Math.round(parseFloat(document.getElementById('ext-paid').value)||0));
+  return{t,years,periods,total,mode,paid,sisa:Math.max(0,total-paid)};
+}
+function updateExtendPreview(){
+  const f=readExtendForm();
+  if(!f.t)return;
+  document.getElementById('ext-paid-wrap').style.display=f.mode==='belum'?'block':'none';
+  const newEnd=addMonths(new Date(f.t.tanggal_masuk),(Number(f.t.durasi_bulan)||0)+f.years*12);
+  document.getElementById('ext-preview').innerHTML=`
+    <div class="row"><span>Kontrak baru berakhir</span><b>${f.years>0?fmtTgl(newEnd):'—'}</b></div>
+    <div class="row"><span>Biaya perpanjangan (${f.years} thn)</span><b>${fmtRpExact(f.total)}</b></div>
+    <div class="row"><span>Dibayar sekarang</span><b>${fmtRpExact(Math.min(f.paid,f.total))}</b></div>
+    <div class="row sisa"><span>Sisa tunggakan</span><b>${fmtRpExact(f.sisa)}</b></div>
+    ${f.mode==='belum'&&f.paid>f.total?'<div style="color:var(--red);">Nominal melebihi total biaya perpanjangan.</div>':''}`;
+}
+function backToDecide(){
+  if(extendFrom==='expired')openExpiredModal(expiredId);
+  else closeModal('modal-expired');
+}
+function extendFromTenant(){
+  const id=currentTenantId;
+  closeModal('modal-tenant');
+  openExpiredModal(id);
+  openExtendForm();
+  extendFrom='tenant';
+}
+async function saveExtension(){
+  const f=readExtendForm();
+  if(!f.t)return;
+  if(f.years<1){toast('Lama perpanjangan minimal 1 tahun',true);return;}
+  if(f.paid>f.total){toast('Nominal melebihi total biaya perpanjangan',true);return;}
+  const btn=document.getElementById('btn-save-ext');
+  btn.disabled=true;btn.textContent='Menyimpan...';
+  const newDur=(Number(f.t.durasi_bulan)||0)+f.years*12;
+  const {error}=await sb.from('pengontrak').update({durasi_bulan:newDur}).eq('id',f.t.id);
+  if(error){toast('Gagal: '+error.message,true);btn.disabled=false;btn.textContent='Simpan Perpanjangan';return;}
+  // catat pembayaran berurutan per periode baru
+  let remaining=f.paid,payFailed=false;
+  for(const p of f.periods){
+    if(remaining<=0)break;
+    const pay=Math.min(remaining,p.amount);
+    remaining-=pay;
+    const ex=getPaymentRow(f.t.id,p.key);
+    const ok=await upsertPayment(f.t.id,p.key,(ex?Number(ex.jumlah||0):0)+pay);
+    if(!ok){payFailed=true;break;}
+  }
+  btn.textContent='Simpan Perpanjangan';
+  await Promise.all([loadTenants(),loadPayments()]);
+  renderAll();
   closeModal('modal-expired');
-  openTenantModal(id);
+  if(payFailed)toast('Kontrak diperpanjang, tetapi pencatatan pembayaran gagal. Catat manual di data pengontrak.',true);
+  else toast(f.sisa>0?`Diperpanjang ${f.years} tahun. Sisa tunggakan ${fmtRpExact(f.sisa)}`:`Diperpanjang ${f.years} tahun, lunas`);
+  checkExpired();
 }
 
 // ── MODAL RUMAH ────────────────────────────
